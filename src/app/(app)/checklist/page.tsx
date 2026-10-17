@@ -5,6 +5,8 @@ import { Check, ClipboardCheck, ChevronRight, ShoppingCart } from "@/components/
 import { getCtx } from "@/lib/ctx";
 import { todayISO } from "@/lib/date";
 import { periodLabel } from "@/lib/period";
+import { loadActiveItems } from "@/lib/server/items";
+import { DataNotice } from "@/components/data-notice";
 import { loadPeriodContext } from "@/lib/server/period";
 import { needsStockCheck } from "@/lib/stock-check";
 import type { ListItem, ShoppingList } from "@/lib/types";
@@ -19,15 +21,19 @@ export default async function ChecklistPage() {
   const label = periodLabel(period);
 
   const today = todayISO();
-  const { data: itemRows } = await supabase.from("item").select("stock_checked_at").eq("active", true);
-  const suggestCheck = (itemRows ?? []).length > 0 && needsStockCheck((itemRows ?? []).map((r) => r.stock_checked_at as string | null), today);
+  const itemsRes = await loadActiveItems<{ id: string }>(supabase, "id");
+  const itemRows = itemsRes.rows;
+  // Saat database belum diperbarui, jangan terus-menerus menyarankan cek stok.
+  const suggestCheck = itemRows.length > 0 && !itemsRes.outdated && needsStockCheck(itemRows.map((r) => r.stock_checked_at), today);
 
   const { data: list } = await supabase
     .from("shopping_list").select("id, month, status, store_id, completed_by, completed_at").eq("month", month).maybeSingle();
 
   if (!list) {
-    const count = (itemRows ?? []).length;
+    const count = itemRows.length;
     return (
+      <div className="flex flex-col gap-4">
+      <DataNotice outdated={itemsRes.outdated} error={itemsRes.error} />
       <EmptyState icon={<ShoppingCart className="h-8 w-8" />} title={`Belanja ${label}`}>
         {count === 0 ? (
           <>
@@ -48,6 +54,7 @@ export default async function ChecklistPage() {
           </>
         )}
       </EmptyState>
+      </div>
     );
   }
 
@@ -81,6 +88,7 @@ export default async function ChecklistPage() {
 
   return (
     <div className="flex flex-col gap-4">
+      <DataNotice outdated={itemsRes.outdated} error={itemsRes.error} />
       {suggestCheck && (
         <Link href="/checklist/cek" transitionTypes={["nav-forward"]} className="flex items-center gap-3 rounded-2xl bg-primary-soft p-3.5 text-sm">
           <ClipboardCheck className="h-5 w-5 shrink-0 text-primary" aria-hidden />

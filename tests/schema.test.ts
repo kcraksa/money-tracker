@@ -209,4 +209,24 @@ describe("skema & RLS", () => {
     const uses = await db.query("select * from stock_log where item_id = $1 and reason = 'use'", [it.id]);
     expect(uses.rows.length).toBeGreaterThan(0);
   });
+
+  it("tanpa migrasi 0003, memilih stock_checked_at gagal dengan 42703 (penyebab daftar stok kosong)", async () => {
+    const old = new PGlite();
+    await old.exec(`
+      create role anon nologin; create role authenticated nologin;
+      create schema auth; create table auth.users (id uuid primary key);
+      create function auth.uid() returns uuid language sql stable as $$ select null::uuid $$;
+    `);
+    for (const f of ["0001_init.sql", "0002_period_income_store.sql"]) {
+      await old.exec(readFileSync(`supabase/migrations/${f}`, "utf8"));
+    }
+    await expect(old.query("select stock_checked_at from item")).rejects.toMatchObject({ code: "42703" });
+    await old.query("select id, name from item"); // kolom lama tetap bisa dibaca
+  });
+
+  it("migrasi 0003 aman dijalankan dua kali", async () => {
+    await db.exec("reset role");
+    await db.exec(readFileSync("supabase/migrations/0003_stock_check.sql", "utf8"));
+    await db.exec(readFileSync("supabase/migrations/0003_stock_check.sql", "utf8"));
+  });
 });
