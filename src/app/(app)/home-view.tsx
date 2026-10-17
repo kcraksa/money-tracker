@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { AlertTriangle, Check, Flame, KeyIcon, Plus, Settings, Sparkles } from "@/components/icons";
+import { AlertTriangle, Check, ChevronRight, Flame, KeyIcon, Plus, Settings, Sparkles, Wallet } from "@/components/icons";
 import { CategoryIcon } from "@/components/category-icon";
 import { PageHeader } from "@/components/page-header";
 import { ProgressBar } from "@/components/progress-bar";
@@ -14,9 +14,12 @@ import { BillRow } from "./bill-row";
 export type HomeProps = {
   greeting: string;
   name: string;
-  monthLabel: string;
+  periodLabel: string;
   day: number;
-  daysInMonth: number;
+  totalDays: number;
+  hasPeriod: boolean;
+  overdue: boolean;
+  income: { total: number; allocated: number } | null;
   totalXp: number;
   streak: number;
   loggedToday: boolean;
@@ -24,7 +27,7 @@ export type HomeProps = {
   totalBudget: number;
   rows: { c: Category; f: Forecast }[];
   bills: {
-    categoryId: string; name: string; icon: string; amount: number; dueDay: number | null;
+    categoryId: string; name: string; icon: string; amount: number; dueLabel: string | null;
     paid: { onTime: boolean; paidOn: string } | null;
   }[];
   quests: { code: string; title: string; icon: string; done: number; target: number; complete: boolean }[];
@@ -89,20 +92,47 @@ export function HomeView(p: HomeProps) {
         )}
       </section>
 
-      {/* Ringkasan bulan ini */}
-      <section className="card flex flex-col gap-3" aria-label="Ringkasan bulan ini">
-        <div className="flex items-baseline justify-between">
-          <span className="text-sm font-medium text-muted">{p.monthLabel}</span>
-          <span className="text-xs text-muted">hari ke-{p.day} dari {p.daysInMonth}</span>
+      {p.overdue && (
+        <Link href="/rencana" className="flex items-center gap-3 rounded-2xl bg-warn-bg p-3.5 text-sm text-warn">
+          <AlertTriangle className="h-[18px] w-[18px] shrink-0" aria-hidden />
+          <span className="flex-1"><b>Periode sudah lewat sebulan.</b> Catat gajian baru supaya anggaran periode berikutnya mulai.</span>
+          <ChevronRight className="h-4 w-4 shrink-0" aria-hidden />
+        </Link>
+      )}
+
+      {/* Ringkasan periode */}
+      <section className="card flex flex-col gap-3" aria-label="Ringkasan periode">
+        <div className="flex items-baseline justify-between gap-2">
+          <span className="text-sm font-medium text-muted">{p.periodLabel}</span>
+          <span className="shrink-0 text-xs text-muted">hari ke-{p.day} dari {p.totalDays}</span>
         </div>
         <div>
           <div className="text-[28px] font-bold leading-none tracking-tight tabular-nums">{rupiah(p.totalSpent)}</div>
           <div className="mt-1 text-sm text-muted">
-            {p.totalBudget > 0 ? <>terpakai dari budget {rupiah(p.totalBudget)}</> : "pengeluaran bulan ini"}
+            {p.totalBudget > 0 ? <>terpakai dari anggaran {rupiah(p.totalBudget)}</> : "pengeluaran periode ini"}
           </div>
         </div>
         {p.totalBudget > 0 && (
-          <ProgressBar pct={monthPct} tone={monthPct > 100 ? "danger" : "primary"} label="Total pemakaian bulan ini" />
+          <ProgressBar pct={monthPct} tone={monthPct > 100 ? "danger" : "primary"} label="Total pemakaian periode ini" />
+        )}
+        {p.income ? (
+          <Link href="/rencana" className="grid grid-cols-3 divide-x divide-border rounded-xl bg-surface-2 text-center">
+            <MiniStat label="Pemasukan" value={rupiah(p.income.total)} />
+            <MiniStat label="Dialokasikan" value={rupiah(p.income.allocated)} />
+            <MiniStat
+              label={p.income.total - p.income.allocated < 0 ? "Kelebihan" : "Belum dibagi"}
+              value={rupiah(Math.abs(p.income.total - p.income.allocated))}
+              tone={p.income.total - p.income.allocated < 0 ? "danger" : p.income.total - p.income.allocated > 0 ? "warn" : "ok"}
+            />
+          </Link>
+        ) : (
+          <Link href="/rencana" className="flex items-center gap-3 rounded-xl bg-primary-soft p-3 text-sm">
+            <Wallet className="h-5 w-5 shrink-0 text-primary" aria-hidden />
+            <span className="flex-1">
+              <b>{p.hasPeriod ? "Catat pemasukan periode ini" : "Catat gajian"}</b> lalu bagi ke tiap pos anggaran.
+            </span>
+            <ChevronRight className="h-4 w-4 shrink-0 text-primary" aria-hidden />
+          </Link>
         )}
       </section>
 
@@ -127,10 +157,10 @@ export function HomeView(p: HomeProps) {
       )}
 
       <section aria-label="Sisa budget">
-        <h2 className="section-title">Sisa budget</h2>
+        <h2 className="section-title">Sisa anggaran</h2>
         {noBudgets && (
-          <Link href="/pengaturan" className="card mb-2 flex items-center justify-between gap-3 text-sm">
-            <span className="text-muted">Budget belum diisi. Atur dulu supaya sisa dan forecast muncul.</span>
+          <Link href="/rencana" className="card mb-2 flex items-center justify-between gap-3 text-sm">
+            <span className="text-muted">Anggaran belum dibagi. Atur dulu supaya sisa dan forecast muncul.</span>
             <span className="shrink-0 font-semibold text-primary">Atur</span>
           </Link>
         )}
@@ -201,6 +231,16 @@ export function HomeView(p: HomeProps) {
           ))}
         </ul>
       </section>
+    </div>
+  );
+}
+
+function MiniStat({ label, value, tone }: { label: string; value: string; tone?: "ok" | "warn" | "danger" }) {
+  const color = tone === "danger" ? "text-danger" : tone === "warn" ? "text-warn" : tone === "ok" ? "text-ok" : "";
+  return (
+    <div className="px-1 py-2.5">
+      <div className="text-[10px] font-medium text-muted">{label}</div>
+      <div className={`text-[13px] font-bold tabular-nums ${color}`}>{value}</div>
     </div>
   );
 }

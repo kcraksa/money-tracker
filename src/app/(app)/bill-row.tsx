@@ -11,11 +11,11 @@ type Props = {
   name: string;
   icon: string;
   amount: number;
-  dueDay: number | null;
+  dueLabel: string | null;
   paid: { onTime: boolean; paidOn: string } | null;
 };
 
-export function BillRow({ categoryId, name, icon, amount, dueDay, paid }: Props) {
+export function BillRow({ categoryId, name, icon, amount, dueLabel, paid }: Props) {
   const [pending, start] = useTransition();
   const [editing, setEditing] = useState(false);
   const [value, setValue] = useState(amount ? String(amount) : "");
@@ -37,7 +37,7 @@ export function BillRow({ categoryId, name, icon, amount, dueDay, paid }: Props)
           <div className="font-semibold">{name}</div>
           <div className="text-xs text-muted">
             {amount ? rupiah(amount) : "Nominal belum diatur"}
-            {dueDay ? ` · jatuh tempo tgl ${dueDay}` : ""}
+            {dueLabel ? ` · jatuh tempo ${dueLabel}` : ""}
           </div>
         </div>
         {paid ? (

@@ -1,5 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { addDays, addMonths, monthStart, weekStart } from "@/lib/date";
+import { weekStart } from "@/lib/date";
+import { effectiveBudgets, previousPeriod } from "@/lib/period";
+import { loadPeriodContext } from "./period";
 import { QUESTS, XP, questProgress, type BadgeCode, type QuestContext } from "@/lib/gamification";
 import type { XpEvent } from "@/lib/types";
 
@@ -81,29 +83,28 @@ export async function syncQuests(sb: SupabaseClient, householdId: string, today:
 }
 
 /**
- * Tutup buku bulan lalu sekali saja: XP keluarga per kategori harian yang aman,
+ * Tutup buku periode sebelumnya sekali saja: XP keluarga per kategori harian yang aman,
  * dan badge "Budget Aman" bila semuanya aman.
  */
-export async function settleLastMonth(sb: SupabaseClient, householdId: string, today: string) {
-  const thisMonth = monthStart(today);
-  const month = addMonths(thisMonth, -1);
-  const period = month.slice(0, 7);
+export async function settlePreviousPeriod(sb: SupabaseClient, householdId: string, today: string) {
+  const ctx = await loadPeriodContext(sb, today);
+  const prev = previousPeriod(ctx.starts, ctx.period);
+  if (!prev || !prev.end) return;
 
   const done = await sb
     .from("xp_event")
     .select("id", { count: "exact", head: true })
-    .like("ref", `budget:%:${period}`);
+    .like("ref", `budget:%:${prev.start}`);
   if ((done.count ?? 0) > 0) return;
 
-  const [cats, budgets, exps] = await Promise.all([
+  const [cats, exps] = await Promise.all([
     sb.from("category").select("id, name, kind").eq("kind", "daily"),
-    sb.from("budget").select("category_id, amount"),
-    sb.from("expense").select("category_id, amount").gte("spent_on", month).lte("spent_on", addDays(thisMonth, -1)),
+    sb.from("expense").select("category_id, amount").gte("spent_on", prev.start).lte("spent_on", prev.end),
   ]);
   const expenses = (exps.data ?? []) as { category_id: string; amount: number }[];
   if (expenses.length === 0) return;
 
-  const budgetOf = new Map((budgets.data ?? []).map((b) => [b.category_id as string, Number(b.amount)]));
+  const budgetOf = effectiveBudgets(ctx.budgetRows, prev.start);
   const targets = ((cats.data ?? []) as { id: string; name: string }[]).filter((c) => (budgetOf.get(c.id) ?? 0) > 0);
   if (targets.length === 0) return;
 
@@ -114,13 +115,13 @@ export async function settleLastMonth(sb: SupabaseClient, householdId: string, t
       safe++;
       await award(sb, {
         householdId, memberId: null, kind: "budget", points: XP.budget,
-        ref: `budget:${c.id}:${period}`, note: `${c.name} aman`,
+        ref: `budget:${c.id}:${prev.start}`, note: `${c.name} aman`,
       });
     }
   }
-  if (safe === targets.length) await grantBadge(sb, householdId, "budget_aman", period, null);
+  if (safe === targets.length) await grantBadge(sb, householdId, "budget_aman", prev.start, null);
 }
 
 export async function afterActivity(sb: SupabaseClient, householdId: string, today: string) {
-  await Promise.all([syncQuests(sb, householdId, today), settleLastMonth(sb, householdId, today)]);
+  await Promise.all([syncQuests(sb, householdId, today), settlePreviousPeriod(sb, householdId, today)]);
 }

@@ -7,25 +7,6 @@ import { createClient } from "@/lib/supabase/server";
 
 const num = (v: FormDataEntryValue | null) => Math.max(0, Math.round(Number(String(v ?? "").replace(/\D/g, "")) || 0));
 
-export async function saveBudgets(form: FormData) {
-  const { supabase, householdId } = await getCtx();
-  const { data: cats } = await supabase.from("category").select("id, kind");
-
-  for (const c of cats ?? []) {
-    const amount = num(form.get(`budget_${c.id}`));
-    await supabase.from("budget").upsert(
-      { household_id: householdId, category_id: c.id, amount },
-      { onConflict: "category_id" },
-    );
-    if (c.kind === "fixed") {
-      const due = num(form.get(`due_${c.id}`));
-      await supabase.from("category").update({ due_day: due >= 1 && due <= 28 ? due : null }).eq("id", c.id);
-    }
-  }
-  revalidatePath("/", "layout");
-  redirect("/pengaturan?tersimpan=1");
-}
-
 export async function addQuick(form: FormData) {
   const { supabase, householdId } = await getCtx();
   const amount = num(form.get("amount"));

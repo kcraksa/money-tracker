@@ -10,7 +10,7 @@ export type EvalRow = {
 
 export type EvalProps = {
   monthLabel: string;
-  prevHref: string;
+  prevHref: string | null;
   nextHref: string | null;
   state: "none" | "open" | "done";
   saving?: number;
@@ -27,13 +27,15 @@ export type EvalProps = {
 
 export function EvaluasiView(p: EvalProps) {
   const nav = (
-    <nav className="card flex items-center justify-between p-2" aria-label="Pilih bulan">
-      <Link href={p.prevHref} aria-label="Bulan sebelumnya" className="flex h-10 w-10 items-center justify-center rounded-xl text-muted hover:bg-surface-2">
-        <ChevronLeft className="h-5 w-5" />
-      </Link>
-      <h1 className="text-base font-bold tracking-tight">Evaluasi {p.monthLabel}</h1>
+    <nav className="card flex items-center justify-between p-2" aria-label="Pilih periode">
+      {p.prevHref ? (
+        <Link href={p.prevHref} aria-label="Periode sebelumnya" className="flex h-10 w-10 items-center justify-center rounded-xl text-muted hover:bg-surface-2">
+          <ChevronLeft className="h-5 w-5" />
+        </Link>
+      ) : <span className="h-10 w-10" />}
+      <h1 className="truncate px-2 text-center text-base font-bold tracking-tight">Evaluasi {p.monthLabel}</h1>
       {p.nextHref ? (
-        <Link href={p.nextHref} aria-label="Bulan berikutnya" className="flex h-10 w-10 items-center justify-center rounded-xl text-muted hover:bg-surface-2">
+        <Link href={p.nextHref} aria-label="Periode berikutnya" className="flex h-10 w-10 items-center justify-center rounded-xl text-muted hover:bg-surface-2">
           <ChevronRight className="h-5 w-5" />
         </Link>
       ) : <span className="h-10 w-10" />}
@@ -45,7 +47,7 @@ export function EvaluasiView(p: EvalProps) {
       <div className="flex flex-col gap-4">
         {nav}
         <EmptyState icon={<BarChart3 className="h-8 w-8" />} title="Belum ada belanja">
-          <p className="max-w-xs text-sm text-muted">Belum ada checklist belanja untuk bulan ini.</p>
+          <p className="max-w-xs text-sm text-muted">Belum ada checklist belanja untuk periode ini.</p>
           <Link href="/checklist" className="btn-primary mt-1">Ke checklist</Link>
         </EmptyState>
       </div>

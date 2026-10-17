@@ -1,5 +1,7 @@
 import { getCtx } from "@/lib/ctx";
-import { addMonths, monthLabel, monthStart, todayISO } from "@/lib/date";
+import { todayISO } from "@/lib/date";
+import { periodLabel, resolvePeriod } from "@/lib/period";
+import { loadPeriodContext } from "@/lib/server/period";
 import { evaluate, lineTotal } from "@/lib/shopping";
 import type { ListItem } from "@/lib/types";
 import { EvaluasiView } from "./evaluasi-view";
@@ -9,14 +11,21 @@ export const metadata = { title: "Evaluasi belanja" };
 export default async function EvaluasiPage({ searchParams }: { searchParams: Promise<{ bulan?: string }> }) {
   const sp = await searchParams;
   const { supabase, members } = await getCtx();
-  const current = monthStart(todayISO());
-  const month = sp.bulan && /^\d{4}-\d{2}-01$/.test(sp.bulan) ? sp.bulan : current;
+  const { starts, period } = await loadPeriodContext(supabase, todayISO());
+  const current = period.start;
+  const month = sp.bulan && /^\d{4}-\d{2}-\d{2}$/.test(sp.bulan) ? sp.bulan : current;
   const nameOf = new Map(members.map((m) => [m.id, m.display_name]));
 
+  // Navigasi antar periode yang punya checklist belanja.
+  const { data: all } = await supabase.from("shopping_list").select("month").order("month");
+  const months = ((all ?? []) as { month: string }[]).map((r) => r.month);
+  const prev = months.filter((m) => m < month).at(-1);
+  const next = months.find((m) => m > month);
+
   const base = {
-    monthLabel: monthLabel(month),
-    prevHref: `/evaluasi?bulan=${addMonths(month, -1)}`,
-    nextHref: month < current ? `/evaluasi?bulan=${addMonths(month, 1)}` : null,
+    monthLabel: periodLabel(resolvePeriod(starts, month)),
+    prevHref: prev ? `/evaluasi?bulan=${prev}` : null,
+    nextHref: next ? `/evaluasi?bulan=${next}` : null,
   };
 
   const { data: list } = await supabase

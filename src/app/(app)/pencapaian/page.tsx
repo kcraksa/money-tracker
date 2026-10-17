@@ -1,5 +1,7 @@
 import { getCtx } from "@/lib/ctx";
-import { monthLabel, monthStart, todayISO, weekStart } from "@/lib/date";
+import { todayISO, weekStart } from "@/lib/date";
+import { periodLabel, resolvePeriod } from "@/lib/period";
+import { loadPeriodContext } from "@/lib/server/period";
 import { BADGES, QUESTS, questProgress } from "@/lib/gamification";
 import { loadQuestContext } from "@/lib/server/xp";
 import type { XpEvent } from "@/lib/types";
@@ -13,9 +15,9 @@ const FRUGAL: XpEvent["kind"][] = ["saving", "bonus"];
 export default async function PencapaianPage() {
   const { supabase, members } = await getCtx();
   const today = todayISO();
-  const month = monthStart(today);
+  const { starts, period } = await loadPeriodContext(supabase, today);
   const ws = weekStart(today);
-  const monthStartTs = `${month}T00:00:00+07:00`;
+  const periodStartTs = `${period.start}T00:00:00+07:00`;
 
   const [xpRes, badgeRes, quest] = await Promise.all([
     supabase.from("xp_event").select("id, member_id, kind, points, ref, note, created_at").order("created_at", { ascending: false }),
@@ -26,7 +28,7 @@ export default async function PencapaianPage() {
   const doneRefs = new Set(events.map((e) => e.ref));
   const nameOf = new Map(members.map((m) => [m.id, m.display_name]));
 
-  const thisMonth = events.filter((e) => e.created_at >= monthStartTs);
+  const thisMonth = events.filter((e) => e.created_at >= periodStartTs);
   const score = (memberId: string, kinds: XpEvent["kind"][]) =>
     thisMonth.filter((e) => e.member_id === memberId && kinds.includes(e.kind)).reduce((s, e) => s + e.points, 0);
 
@@ -34,7 +36,7 @@ export default async function PencapaianPage() {
 
   return (
     <PencapaianView
-      monthLabel={monthLabel(month)}
+      monthLabel={periodLabel(period)}
       totalXp={events.reduce((s, e) => s + e.points, 0)}
       board={members.map((m) => ({ id: m.id, name: m.display_name, rajin: score(m.id, DILIGENT), hemat: score(m.id, FRUGAL) }))}
       badges={BADGES.map((b) => {
@@ -42,7 +44,7 @@ export default async function PencapaianPage() {
         const last = got.at(-1);
         return {
           code: b.code, icon: b.icon, title: b.title, desc: b.desc, times: got.length,
-          last: last?.period ?? null, by: last?.member_id ? (nameOf.get(last.member_id) ?? null) : null,
+          last: last ? periodLabel(resolvePeriod(starts, last.period)) : null, by: last?.member_id ? (nameOf.get(last.member_id) ?? null) : null,
         };
       })}
       quests={QUESTS.map((q) => {

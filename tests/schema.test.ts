@@ -26,7 +26,9 @@ beforeAll(async () => {
     grant usage on schema public to authenticated;
     insert into auth.users values ('${A}'), ('${B}'), ('${C}');
   `);
-  await db.exec(readFileSync("supabase/migrations/0001_init.sql", "utf8"));
+  for (const f of ["0001_init.sql", "0002_period_income_store.sql"]) {
+    await db.exec(readFileSync(`supabase/migrations/${f}`, "utf8"));
+  }
   await db.exec(`
     grant select, insert, update, delete on all tables in schema public to authenticated;
   `);
@@ -128,5 +130,68 @@ describe("skema & RLS", () => {
     await as(null);
     await db.exec("set role anon");
     await expect(db.query("select create_household('x','y')")).rejects.toThrow(/permission denied/);
+  });
+
+  it("periode & pemasukan: satu periode per tanggal, pemasukan ikut terhapus bersama periode", async () => {
+    await as(A);
+    const h = (await db.query<{ id: string }>("select id from household")).rows[0].id;
+    const per = (await db.query<{ id: string }>(
+      "insert into period (household_id, start_on) values ($1,'2026-10-25') returning id", [h],
+    )).rows[0];
+    await db.query(
+      "insert into income (household_id, period_id, amount, received_on) values ($1,$2,10000000,'2026-10-25')",
+      [h, per.id],
+    );
+    await expect(
+      db.query("insert into period (household_id, start_on) values ($1,'2026-10-25')", [h]),
+    ).rejects.toThrow(/duplicate/);
+    await expect(
+      db.query("insert into income (household_id, period_id, amount, received_on) values ($1,$2,0,'2026-10-25')", [h, per.id]),
+    ).rejects.toThrow(/check/);
+    await as(C);
+    expect((await db.query("select * from period")).rows).toHaveLength(0);
+    expect((await db.query("select * from income")).rows).toHaveLength(0);
+  });
+
+  it("budget per periode: data lama jadi default, alokasi baru berlaku mulai tanggalnya", async () => {
+    await as(A);
+    const h = (await db.query<{ id: string }>("select id from household")).rows[0].id;
+    const cat = (await db.query<{ id: string }>("select id from category where name = 'Jajan'")).rows[0].id;
+    const base = await db.query<{ effective_from: string }>("select effective_from::text from budget where category_id = $1", [cat]);
+    expect(base.rows[0].effective_from).toBe("2000-01-01");
+    await db.query(
+      "insert into budget (household_id, category_id, amount, effective_from) values ($1,$2,800000,'2026-10-25')",
+      [h, cat],
+    );
+    await expect(
+      db.query("insert into budget (household_id, category_id, amount, effective_from) values ($1,$2,1,'2026-10-25')", [h, cat]),
+    ).rejects.toThrow(/duplicate/);
+    const rows = await db.query("select * from budget where category_id = $1", [cat]);
+    expect(rows.rows).toHaveLength(2);
+  });
+
+  it("toko & urutan rak: terisolasi per rumah tangga, satu posisi per barang per toko", async () => {
+    await as(A);
+    const h = (await db.query<{ id: string }>("select id from household")).rows[0].id;
+    const st = (await db.query<{ id: string }>(
+      "insert into store (household_id, name) values ($1,'Hari-Hari') returning id", [h],
+    )).rows[0];
+    await expect(
+      db.query("insert into store (household_id, name) values ($1,'hari-hari')", [h]),
+    ).rejects.toThrow(/duplicate/);
+    const item = (await db.query<{ id: string }>("select id from item limit 1")).rows[0];
+    await db.query(
+      "insert into store_item_order (household_id, store_id, item_id, avg_pos) values ($1,$2,$3,0.25)",
+      [h, st.id, item.id],
+    );
+    await expect(
+      db.query("insert into store_item_order (household_id, store_id, item_id, avg_pos) values ($1,$2,$3,0.5)", [h, st.id, item.id]),
+    ).rejects.toThrow(/duplicate/);
+    await expect(
+      db.query("insert into store_item_order (household_id, store_id, item_id, avg_pos) values ($1,$2,$3,1.5)", [h, st.id, item.id]),
+    ).rejects.toThrow(/check/);
+    await as(C);
+    expect((await db.query("select * from store")).rows).toHaveLength(0);
+    expect((await db.query("select * from store_item_order")).rows).toHaveLength(0);
   });
 });

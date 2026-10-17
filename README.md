@@ -10,18 +10,36 @@ plus checklist belanja bulanan berbasis stok, forecast budget, dan gamifikasi ri
 | Layar | Isi |
 |---|---|
 | **Catat** | Keypad besar, kategori satu tap, tombol cepat (mis. Bensin 50rb), tanggal otomatis, pencatat otomatis, Urungkan, antrean offline |
-| **Beranda** | Level & XP keluarga, streak, sisa budget + forecast akhir bulan, tagihan tetap (lunas/belum), quest minggu ini |
-| **Checklist** | Dibuat otomatis dari rekomendasi `max(0, kebutuhan − stok)`. Centang barang, isi harga per satuan (sesuai rak), total dihitung otomatis |
+| **Beranda** | Level & XP keluarga, streak, ringkasan periode (pemasukan, dialokasikan, belum dibagi), sisa anggaran + forecast akhir periode, tagihan tetap (lunas/belum), quest minggu ini |
+| **Rencana gajian** | Catat pemasukan, bagi ke tiap pos dengan penghitung "belum dialokasikan" langsung, tambah/arsipkan pos (mis. Makan) |
+| **Checklist** | Dibuat otomatis dari rekomendasi `max(0, kebutuhan − stok)`. Pilih toko, urutan mengikuti rak toko itu. Centang barang, isi harga per satuan (sesuai rak), total dihitung otomatis |
 | **Stok rumah** | Stok diubah dengan tombol **+ / −**. Perkiraan pemakaian dihitung ulang dari pemakaian nyata beberapa bulan terakhir |
 | **Evaluasi** | Rekomendasi vs dibeli, barang di luar daftar, uang yang dihemat |
 | **Pencapaian** | Badge, quest, papan kontribusi dua jalur (rajin mencatat vs hemat) |
 
 Tema terang/gelap (otomatis + tombol), mobile-first.
 
+### Periode gajian
+
+Anggaran berjalan per **periode**: dari satu gajian ke gajian berikutnya (mis. 25 Okt–24 Nov), bukan bulan kalender.
+
+- Gajian pertama yang dicatat di **Rencana gajian** memulai periode. Sebelum itu aplikasi memakai bulan kalender.
+- Catat **Gajian baru** (centang "mulai periode baru") untuk periode berikutnya. Pemasukan lain (bonus) masuk ke periode berjalan.
+- Alokasi per pos **carry-over**: periode baru otomatis memakai angka periode sebelumnya sampai kamu mengubahnya.
+- Tanggal jatuh tempo tagihan dihitung di dalam periode (jatuh tempo tgl 20 pada periode 25 Okt–24 Nov = 20 Nov).
+- Kalau gajian berikutnya belum dicatat padahal periode sudah lewat sebulan, data tidak terpotong: periode tetap berjalan dan muncul pengingat.
+
+### Urutan checklist mengikuti rak toko
+
+Saat belanja, pilih toko (Hari-Hari, Naga, dst.). Urutan rak **dipelajari dari urutan kamu mencentang barang**: tiap belanja
+menggeser posisi rata-rata barang di toko itu, jadi makin sering belanja makin rapi. Barang yang belum tertib di toko itu
+ditaruh di bagian "posisi belum diketahui", dan yang sudah dicentang turun ke "sudah di keranjang". Agar urutan yang
+dipelajari benar, **centang saat barang masuk keranjang**, bukan di kasir.
+
 ### Aturan penting
 
 - **Harga per satuan rak.** Satuan adalah label bebas (pcs, botol, kg…). Total = jumlah × harga per satuan dan selalu dihitung, tidak disimpan.
-- **Forecast** = pengeluaran sejauh ini ÷ hari berjalan × jumlah hari bulan itu. Peringatan baru muncul **mulai tanggal 7** (data awal bulan terlalu sedikit). Kategori sekali jalan (Belanja bulanan) tidak diproyeksi, hanya dibandingkan dengan budget.
+- **Forecast** = pengeluaran sejauh ini ÷ hari berjalan × panjang periode. Peringatan baru muncul **mulai hari ke-7 periode** (data awal bulan terlalu sedikit). Kategori sekali jalan (Belanja bulanan) tidak diproyeksi, hanya dibandingkan dengan budget.
 - **Tanggal memakai WIB** (Asia/Jakarta), bukan UTC server.
 
 ### Poin (XP)
@@ -33,7 +51,7 @@ Tema terang/gelap (otomatis + tombol), mobile-first.
 | Tagihan tetap lunas tepat waktu | 25 | pembayar |
 | **Hemat belanja**: 1 poin tiap Rp 2.000 dihemat (maks 100) | s/d 100 | yang menyelesaikan belanja |
 | **Bonus** belanja tidak melebihi rekomendasi | 40 | yang menyelesaikan belanja |
-| Kategori harian aman di akhir bulan | 20 / kategori | keluarga |
+| Kategori harian aman di akhir periode | 20 / kategori | keluarga |
 | Quest mingguan selesai | 50 | keluarga |
 
 Papan kontribusi membandingkan **Rajin** (catat + streak + tagihan) dan **Hemat** (hemat belanja + bonus). Poin hemat
@@ -54,8 +72,10 @@ Perintah lain: `npm test` (logika + skema SQL/RLS di Postgres nyata via pglite),
 ## 1. Setup Supabase
 
 1. Buat project di <https://supabase.com> (region **Singapore / ap-southeast-1** supaya dekat).
-2. **SQL Editor** → New query → tempel isi [`supabase/migrations/0001_init.sql`](supabase/migrations/0001_init.sql) → Run.
-   (Atau dengan CLI: `supabase link` lalu `supabase db push`.)
+2. **SQL Editor** → New query → jalankan berurutan:
+   [`0001_init.sql`](supabase/migrations/0001_init.sql), lalu
+   [`0002_period_income_store.sql`](supabase/migrations/0002_period_income_store.sql) (periode gajian, pemasukan, toko & urutan rak).
+   (Atau dengan CLI: `supabase link` lalu `supabase db push`, yang menjalankan keduanya.)
 3. **Project Settings → API**: salin **Project URL** dan **anon public key**. Keduanya aman berada di browser,
    karena keamanan data dijaga Row Level Security per rumah tangga.
 4. **Authentication → URL Configuration**
@@ -99,7 +119,7 @@ Kalau variabel belum diisi, aplikasi menampilkan halaman `/setup`.
 ### Pertama kali dipakai
 
 1. Buka URL → masukkan email → klik link / masukkan kode → **Buat rumah tangga** → catat **kode undangan**.
-2. Di **Pengaturan** isi budget per kategori, nominal & tanggal jatuh tempo Listrik/Sekolah, dan tombol cepat.
+2. Buka **Rencana gajian** (dari Beranda atau Pengaturan): catat gajian, lalu bagi ke tiap pos (belanja bulanan, makan, bensin, tagihan, dst.). Di **Pengaturan** atur tombol cepat.
 3. Istri membuka URL yang sama, login dengan emailnya, pilih **Gabung pakai kode**.
 4. Di **Checklist → Stok rumah** tambahkan barang belanja bulanan (satuan & harga per satuan sesuai rak), lalu buat checklist bulan ini.
 5. Pasang di HP: Android Chrome → menu ⋮ → *Install app*; iPhone Safari → Bagikan → *Tambah ke Layar Utama*.
@@ -107,13 +127,13 @@ Kalau variabel belum diisi, aplikasi menampilkan halaman `/setup`.
 ## Struktur proyek
 
 ```
-supabase/migrations/0001_init.sql   skema, RLS, seed kategori, fungsi (create/join household, adjust_stock)
-src/lib/                            logika murni + tes: forecast, shopping (rekomendasi/evaluasi), gamification, date
+supabase/migrations/               skema, RLS, seed kategori, fungsi (0001); periode, pemasukan, toko & urutan rak (0002)
+src/lib/                            logika murni + tes: forecast, period, route (urutan rak), shopping, gamification, date
 src/lib/server/xp.ts                pemberian XP/badge/quest (idempoten)
 src/lib/supabase/                   klien browser/server + penjaga sesi
 src/proxy.ts                        refresh sesi & redirect ke /login (pengganti middleware di Next 16)
-src/app/(app)/                      Beranda, Catat, Checklist (+Stok), Evaluasi, Pencapaian, Pengaturan
-src/app/actions/                    Server Actions (mencatat, tagihan, stok, belanja, pengaturan)
+src/app/(app)/                      Beranda, Catat, Rencana gajian, Checklist (+Stok), Evaluasi, Pencapaian, Pengaturan
+src/app/actions/                    Server Actions (mencatat, tagihan, rencana gajian, stok, belanja, pengaturan)
 public/sw.js                        service worker: layar Catat tetap terbuka saat offline
 tests/schema.test.ts                menguji skema + RLS pada Postgres nyata (pglite)
 ```

@@ -3,10 +3,12 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { getCtx } from "@/lib/ctx";
-import { monthStart, todayISO } from "@/lib/date";
+import { todayISO } from "@/lib/date";
 import { XP, savingPoints } from "@/lib/gamification";
+import { learnOrder, type OrderEntry } from "@/lib/route";
 import { evaluate, lineTotal, recommend } from "@/lib/shopping";
 import type { ListItem } from "@/lib/types";
+import { loadPeriodContext } from "@/lib/server/period";
 import { afterActivity, award, grantBadge } from "@/lib/server/xp";
 
 const num = (v: unknown, max = 1_000_000_000) => {
@@ -23,10 +25,10 @@ async function activeItems(sb: Awaited<ReturnType<typeof getCtx>>["supabase"]) {
   }));
 }
 
-/** Checklist bulan ini dibuat otomatis dari rekomendasi: max(0, kebutuhan - stok). */
+/** Checklist periode ini dibuat otomatis dari rekomendasi: max(0, kebutuhan - stok). */
 export async function createList() {
   const { supabase, me, householdId } = await getCtx();
-  const month = monthStart(todayISO());
+  const month = (await loadPeriodContext(supabase, todayISO())).period.start;
 
   const { data: list, error } = await supabase
     .from("shopping_list")
@@ -86,7 +88,11 @@ export async function updateListItem(
 ): Promise<{ ok: boolean }> {
   const { supabase } = await getCtx();
   const update: Record<string, unknown> = {};
-  if (patch.checked !== undefined) update.checked = Boolean(patch.checked);
+  if (patch.checked !== undefined) {
+    update.checked = Boolean(patch.checked);
+    // Waktu centang = jejak langkah di toko; dari sinilah urutan rak dipelajari.
+    update.checked_at = patch.checked ? new Date().toISOString() : null;
+  }
   if (patch.qty_bought !== undefined) update.qty_bought = num(patch.qty_bought, 100000);
   if (patch.unit_price_actual !== undefined) update.unit_price_actual = Math.round(num(patch.unit_price_actual));
   const { error } = await supabase.from("shopping_list_item").update(update).eq("id", id);
@@ -103,7 +109,7 @@ export async function addExtra(form: FormData) {
       unit: String(form.get("unit") ?? "").trim() || "pcs",
       qty_recommended: 0, qty_bought: num(form.get("qty") || 1, 100000),
       unit_price_actual: Math.round(num(String(form.get("price") ?? "").replace(/\D/g, ""))),
-      checked: true, is_extra: true,
+      checked: true, is_extra: true, checked_at: new Date().toISOString(),
     });
   }
   revalidatePath("/checklist", "layout");
@@ -129,7 +135,7 @@ export async function finishList(form: FormData) {
   const { data: claimed } = await supabase
     .from("shopping_list")
     .update({ status: "done", completed_by: me.id, completed_at: new Date().toISOString() })
-    .eq("id", listId).eq("status", "open").select("id, month").maybeSingle();
+    .eq("id", listId).eq("status", "open").select("id, month, store_id").maybeSingle();
   if (!claimed) redirect("/evaluasi");
 
   const { data } = await supabase.from("shopping_list_item").select("*").eq("list_id", listId);
@@ -157,8 +163,10 @@ export async function finishList(form: FormData) {
     }
   }
 
+  if (claimed.store_id) await learnStoreOrder(supabase, householdId, claimed.store_id, items);
+
   const ev = evaluate(items);
-  const period = String(claimed.month).slice(0, 7);
+  const period = String(claimed.month);
   await award(supabase, {
     householdId, memberId: me.id, kind: "saving", points: savingPoints(ev.saving),
     ref: `saving:${listId}`, note: `Hemat belanja ${ev.saving}`,
@@ -174,4 +182,50 @@ export async function finishList(form: FormData) {
 
   revalidatePath("/", "layout");
   redirect(`/evaluasi?bulan=${period}-01`);
+}
+
+type Db = Awaited<ReturnType<typeof getCtx>>["supabase"];
+
+/** Perbarui posisi rak tiap barang di toko ini dari urutan centang belanja barusan. */
+async function learnStoreOrder(sb: Db, householdId: string, storeId: string, items: (ListItem & { checked_at?: string | null })[]) {
+  const seq = items
+    .filter((i) => i.checked && !i.is_extra && i.item_id && i.checked_at)
+    .sort((a, b) => String(a.checked_at).localeCompare(String(b.checked_at)))
+    .map((i) => i.item_id as string);
+  if (seq.length < 2) return;
+
+  const { data } = await sb.from("store_item_order").select("item_id, avg_pos, samples").eq("store_id", storeId);
+  const prev = new Map<string, OrderEntry>(
+    (data ?? []).map((r) => [r.item_id as string, { avg: Number(r.avg_pos), samples: Number(r.samples) }]),
+  );
+  const learned = learnOrder(prev, seq);
+  const rows = [...learned].map(([item_id, v]) => ({
+    household_id: householdId, store_id: storeId, item_id,
+    avg_pos: Math.round(v.avg * 10000) / 10000, samples: v.samples, updated_at: new Date().toISOString(),
+  }));
+  if (rows.length) await sb.from("store_item_order").upsert(rows, { onConflict: "store_id,item_id" });
+}
+
+/** Pilih toko untuk belanja ini; urutan checklist langsung mengikuti rak toko tersebut. */
+export async function setListStore(listId: string, storeId: string | null): Promise<{ ok: boolean }> {
+  const { supabase } = await getCtx();
+  const { error } = await supabase
+    .from("shopping_list").update({ store_id: storeId }).eq("id", listId).eq("status", "open");
+  revalidatePath("/checklist");
+  return { ok: !error };
+}
+
+/** Tambah toko baru (mis. "Hari-Hari") dan langsung dipakai di belanja ini. */
+export async function addStore(form: FormData) {
+  const { supabase, householdId } = await getCtx();
+  const listId = String(form.get("list_id") ?? "");
+  const name = String(form.get("name") ?? "").trim().slice(0, 40);
+  if (name) {
+    const { data: found } = await supabase.from("store").select("id").ilike("name", name).maybeSingle();
+    const storeId = found?.id ??
+      (await supabase.from("store").insert({ household_id: householdId, name }).select("id").single()).data?.id;
+    if (storeId && listId) await supabase.from("shopping_list").update({ store_id: storeId }).eq("id", listId).eq("status", "open");
+  }
+  revalidatePath("/checklist", "layout");
+  redirect("/checklist");
 }

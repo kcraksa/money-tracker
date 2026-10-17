@@ -2,7 +2,9 @@
 
 import { revalidatePath } from "next/cache";
 import { getCtx } from "@/lib/ctx";
-import { dayOfMonth, monthStart, todayISO } from "@/lib/date";
+import { todayISO } from "@/lib/date";
+import { dueDateInPeriod } from "@/lib/period";
+import { loadPeriodContext } from "@/lib/server/period";
 import { XP } from "@/lib/gamification";
 import { afterActivity, award, grantBadge } from "@/lib/server/xp";
 
@@ -10,7 +12,8 @@ import { afterActivity, award, grantBadge } from "@/lib/server/xp";
 export async function markBillPaid(categoryId: string, amount: number): Promise<{ error?: string }> {
   const { supabase, me, householdId } = await getCtx();
   const today = todayISO();
-  const month = monthStart(today);
+  const { period } = await loadPeriodContext(supabase, today);
+  const month = period.start; // kunci status lunas = awal periode
   const value = Math.round(Number(amount));
   if (!Number.isFinite(value) || value <= 0) return { error: "Nominal tidak valid" };
 
@@ -24,7 +27,7 @@ export async function markBillPaid(categoryId: string, amount: number): Promise<
     .select("id").single();
   if (e1) return { error: "Gagal menyimpan" };
 
-  const onTime = cat.due_day ? dayOfMonth(today) <= cat.due_day : true;
+  const onTime = cat.due_day ? today <= dueDateInPeriod(period, cat.due_day) : true;
   const { error: e2 } = await supabase.from("bill_payment").insert({
     household_id: householdId, category_id: categoryId, month,
     expense_id: exp.id, paid_on: today, paid_by: me.id, on_time: onTime,
@@ -40,7 +43,7 @@ export async function markBillPaid(categoryId: string, amount: number): Promise<
       ref: `bill:${categoryId}:${month}`, note: `${cat.name} lunas tepat waktu`,
     });
     if (String(cat.name).toLowerCase() === "listrik") {
-      await grantBadge(supabase, householdId, "listrik_tepat", month.slice(0, 7), me.id);
+      await grantBadge(supabase, householdId, "listrik_tepat", month, me.id);
     }
   }
   await afterActivity(supabase, householdId, today);
@@ -50,7 +53,8 @@ export async function markBillPaid(categoryId: string, amount: number): Promise<
 
 export async function unmarkBill(categoryId: string): Promise<void> {
   const { supabase } = await getCtx();
-  const month = monthStart(todayISO());
+  const { period } = await loadPeriodContext(supabase, todayISO());
+  const month = period.start;
   const { data } = await supabase
     .from("bill_payment").select("expense_id").eq("category_id", categoryId).eq("month", month).maybeSingle();
   await supabase.from("bill_payment").delete().eq("category_id", categoryId).eq("month", month);

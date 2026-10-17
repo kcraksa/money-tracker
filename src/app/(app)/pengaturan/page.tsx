@@ -1,6 +1,7 @@
-import { addQuick, deleteQuick, saveBudgets, saveName, signOut } from "@/app/actions/settings";
+import Link from "next/link";
+import { addQuick, deleteQuick, saveName, signOut } from "@/app/actions/settings";
 import { CategoryIcon } from "@/components/category-icon";
-import { Check, LogOut, Plus, Trash2 } from "@/components/icons";
+import { Check, ChevronRight, LogOut, Plus, Trash2, Wallet } from "@/components/icons";
 import { CopyButton } from "@/components/copy-button";
 import { PageHeader } from "@/components/page-header";
 import { getCtx } from "@/lib/ctx";
@@ -15,16 +16,14 @@ export default async function PengaturanPage({
   const sp = await searchParams;
   const { supabase, me, members, householdId } = await getCtx();
 
-  const [hh, cats, budgets, quicks] = await Promise.all([
+  const [hh, cats, quicks] = await Promise.all([
     supabase.from("household").select("name, invite_code").eq("id", householdId).single(),
-    supabase.from("category").select("id, name, icon, kind, lump_sum, due_day, sort_order").order("sort_order"),
-    supabase.from("budget").select("category_id, amount"),
+    supabase.from("category").select("id, name, icon, kind, lump_sum, due_day, sort_order, active").order("sort_order"),
     supabase.from("quick_expense").select("id, label, amount, category_id").order("created_at"),
   ]);
   const categories = (cats.data ?? []) as Category[];
-  const budgetOf = new Map((budgets.data ?? []).map((b) => [b.category_id as string, Number(b.amount)]));
   const catById = new Map(categories.map((c) => [c.id, c]));
-  const daily = categories.filter((c) => c.kind === "daily");
+  const daily = categories.filter((c) => c.kind === "daily" && c.active !== false);
   const code = hh.data?.invite_code ?? "";
 
   return (
@@ -54,38 +53,14 @@ export default async function PengaturanPage({
         </div>
       </section>
 
-      <form action={saveBudgets} className="card flex flex-col gap-4 p-5" aria-label="Budget">
-        <div>
-          <h2 className="text-base font-semibold tracking-tight">Budget bulanan & tagihan</h2>
-          <p className="text-xs text-muted">Kolom &quot;Tgl&quot; = tanggal jatuh tempo (1–28) untuk tagihan tetap.</p>
-        </div>
-        {categories.map((c) => (
-          <div key={c.id} className="flex items-center gap-3">
-            <CategoryIcon icon={c.icon} size="sm" />
-            <div className="min-w-0 flex-1">
-              <label className="mb-1 block truncate text-sm font-semibold" htmlFor={`b_${c.id}`}>
-                {c.name}
-                <span className="ml-1.5 text-xs font-normal text-muted">
-                  {c.kind === "fixed" ? "tagihan" : c.lump_sum ? "sekali jalan" : "budget"}
-                </span>
-              </label>
-              <div className="flex gap-2">
-                <input
-                  id={`b_${c.id}`} name={`budget_${c.id}`} inputMode="numeric" className="input min-h-11"
-                  defaultValue={budgetOf.get(c.id) || ""} placeholder="Rp 0"
-                />
-                {c.kind === "fixed" && (
-                  <input
-                    name={`due_${c.id}`} inputMode="numeric" className="input min-h-11 w-20 text-center" aria-label={`Jatuh tempo ${c.name}`}
-                    defaultValue={c.due_day ?? ""} placeholder="Tgl"
-                  />
-                )}
-              </div>
-            </div>
-          </div>
-        ))}
-        <button className="btn-primary">Simpan budget</button>
-      </form>
+      <Link href="/rencana" className="card flex items-center gap-3 p-4 transition active:scale-[0.99]">
+        <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-primary-soft text-primary"><Wallet className="h-5 w-5" aria-hidden /></span>
+        <span className="min-w-0 flex-1">
+          <span className="block font-semibold">Rencana gajian & anggaran</span>
+          <span className="block text-xs text-muted">Catat pemasukan, bagi ke tiap pos, kelola pos</span>
+        </span>
+        <ChevronRight className="h-5 w-5 text-muted" aria-hidden />
+      </Link>
 
       <section className="card flex flex-col gap-4 p-5" aria-label="Tombol cepat">
         <div>

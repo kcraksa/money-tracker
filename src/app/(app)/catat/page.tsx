@@ -11,7 +11,7 @@ export default async function CatatPage() {
 
   const [cats, quicks, recent] = await Promise.all([
     supabase.from("category").select("id, name, icon, kind, lump_sum, due_day, sort_order")
-      .eq("kind", "daily").order("sort_order"),
+      .eq("kind", "daily").eq("active", true).order("sort_order"),
     supabase.from("quick_expense").select("id, label, amount, category_id").order("created_at"),
     supabase.from("expense").select("id, amount, spent_on, member_id, category_id, note")
       .order("created_at", { ascending: false }).limit(6),

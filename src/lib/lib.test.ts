@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { addDays, addMonths, daysInMonth, greeting, todayISO, weekStart } from "./date";
+import {
+  addMonthsClamped, dueDateInPeriod, effectiveBudgets, elapsedDays, isOverdue, periodLabel, previousPeriod,
+  rangeEnd, resolvePeriod, totalDays,
+} from "./period";
+import { learnOrder, sortByRoute } from "./route";
 import { forecast } from "./forecast";
 import { BADGES, computeStreak, levelInfo, questProgress, savingPoints } from "./gamification";
 import { evaluate, recommend, suggestMonthlyNeed } from "./shopping";
@@ -41,23 +46,113 @@ describe("format", () => {
 });
 
 describe("forecast", () => {
-  it("proyeksi = spent / hari x jumlah hari", () => {
-    const f = forecast({ spent: 300000, budget: 800000, today: "2026-10-10" });
+  it("proyeksi = spent / hari berjalan x panjang periode", () => {
+    const f = forecast({ spent: 300000, budget: 800000, elapsedDays: 10, totalDays: 31 });
     expect(f.projected).toBe(930000); // 300000/10*31
     expect(f.status).toBe("warn");
     expect(f.remaining).toBe(500000);
   });
   it("tidak memperingatkan sebelum hari ke-7", () => {
-    expect(forecast({ spent: 300000, budget: 800000, today: "2026-10-05" }).status).toBe("ok");
+    expect(forecast({ spent: 300000, budget: 800000, elapsedDays: 5, totalDays: 31 }).status).toBe("ok");
   });
   it("over saat sudah melewati budget, nobudget bila budget 0", () => {
-    expect(forecast({ spent: 900000, budget: 800000, today: "2026-10-03" }).status).toBe("over");
-    expect(forecast({ spent: 1, budget: 0, today: "2026-10-03" }).status).toBe("nobudget");
+    expect(forecast({ spent: 900000, budget: 800000, elapsedDays: 3, totalDays: 31 }).status).toBe("over");
+    expect(forecast({ spent: 1, budget: 0, elapsedDays: 3, totalDays: 31 }).status).toBe("nobudget");
   });
   it("belanja bulanan tidak diproyeksi", () => {
-    const f = forecast({ spent: 500000, budget: 1500000, today: "2026-10-10", lumpSum: true });
+    const f = forecast({ spent: 500000, budget: 1500000, elapsedDays: 10, totalDays: 31, lumpSum: true });
     expect(f.projected).toBe(500000);
     expect(f.status).toBe("ok");
+  });
+});
+
+describe("periode gajian", () => {
+  it("tanpa gajian tercatat: bulan kalender", () => {
+    const p = resolvePeriod([], "2026-10-17");
+    expect(p).toEqual({ start: "2026-10-01", plannedEnd: "2026-10-31", end: null, explicit: false });
+    expect(periodLabel(p)).toBe("Oktober 2026");
+  });
+  it("periode dimulai di tanggal gajian dan berakhir sehari sebelum gajian berikutnya", () => {
+    const starts = ["2026-09-25", "2026-10-25"];
+    expect(resolvePeriod(starts, "2026-10-20")).toEqual({ start: "2026-09-25", plannedEnd: "2026-10-24", end: "2026-10-24", explicit: true });
+    const cur = resolvePeriod(starts, "2026-10-30");
+    expect(cur).toEqual({ start: "2026-10-25", plannedEnd: "2026-11-24", end: null, explicit: true });
+    expect(periodLabel(cur)).toBe("25 Okt – 24 Nov 2026");
+    expect(periodLabel(resolvePeriod(["2026-12-25"], "2026-12-30"))).toBe("25 Des 2026 – 24 Jan 2027");
+  });
+  it("tanggal gajian 31 tidak meloncat bulan", () => {
+    expect(addMonthsClamped("2026-01-31", 1)).toBe("2026-02-28");
+    expect(resolvePeriod(["2026-01-31"], "2026-02-10").plannedEnd).toBe("2026-02-27");
+  });
+  it("periode sebelumnya: eksplisit, atau bulan kalender sebelum gajian pertama", () => {
+    const starts = ["2026-09-25", "2026-10-25"];
+    const cur = resolvePeriod(starts, "2026-10-30");
+    expect(previousPeriod(starts, cur)).toMatchObject({ start: "2026-09-25", end: "2026-10-24", explicit: true });
+    const first = resolvePeriod(["2026-10-25"], "2026-10-26");
+    expect(previousPeriod(["2026-10-25"], first)).toMatchObject({ start: "2026-10-01", end: "2026-10-24", explicit: false });
+    expect(previousPeriod([], resolvePeriod([], "2026-10-17"))).toMatchObject({ start: "2026-09-01", end: "2026-09-30" });
+  });
+  it("hari berjalan & panjang periode; lewat rencana = menunggu gajian baru", () => {
+    const p = resolvePeriod(["2026-10-25"], "2026-10-30");
+    expect(elapsedDays(p, "2026-10-30")).toBe(6);
+    expect(totalDays(p, "2026-10-30")).toBe(31);
+    expect(isOverdue(p, "2026-10-30")).toBe(false);
+    expect(isOverdue(p, "2026-11-28")).toBe(true);
+    expect(totalDays(p, "2026-11-28")).toBe(35); // tidak memotong data, ikut hari berjalan
+    expect(rangeEnd(p, "2026-11-28")).toBe("2026-11-28");
+  });
+  it("jatuh tempo tagihan dihitung di dalam periode", () => {
+    const p = resolvePeriod(["2026-10-25"], "2026-10-30");
+    expect(dueDateInPeriod(p, 20)).toBe("2026-11-20");
+    expect(dueDateInPeriod(p, 28)).toBe("2026-10-28");
+    expect(dueDateInPeriod(p, 25)).toBe("2026-10-25");
+    expect(dueDateInPeriod(resolvePeriod([], "2026-10-17"), 20)).toBe("2026-10-20");
+  });
+  it("budget carry-over: baris terbaru yang berlaku, data lama sebagai default", () => {
+    const rows = [
+      { category_id: "jajan", effective_from: "2000-01-01", amount: 500000 },
+      { category_id: "jajan", effective_from: "2026-09-25", amount: 800000 },
+      { category_id: "jajan", effective_from: "2026-11-25", amount: 900000 },
+      { category_id: "sayur", effective_from: "2000-01-01", amount: 300000 },
+    ];
+    const b = effectiveBudgets(rows, "2026-10-25");
+    expect(b.get("jajan")).toBe(800000);
+    expect(b.get("sayur")).toBe(300000);
+    expect(effectiveBudgets(rows, "2026-08-01").get("jajan")).toBe(500000);
+  });
+});
+
+describe("urutan rak toko", () => {
+  const it_ = (id: string, name: string, checked = false) => ({
+    id, list_id: "l", item_id: id, name, unit: "pcs", qty_recommended: 1, qty_bought: 1,
+    unit_price_est: 0, unit_price_actual: 0, checked, is_extra: false,
+  });
+  it("belajar dari urutan centang dan makin yakin tiap belanja", () => {
+    let order = learnOrder(new Map(), ["buah", "bumbu", "sabun"]);
+    expect(order.get("buah")).toEqual({ avg: 0, samples: 1 });
+    expect(order.get("bumbu")).toEqual({ avg: 0.5, samples: 1 });
+    expect(order.get("sabun")).toEqual({ avg: 1, samples: 1 });
+    order = new Map([...order, ...learnOrder(order, ["buah", "sabun"])]);
+    expect(order.get("buah")!.samples).toBe(2);
+    expect(order.get("bumbu")!.avg).toBe(0.5); // tidak ikut belanja kedua: tidak berubah
+  });
+  it("satu barang tidak memberi informasi urutan", () => {
+    expect(learnOrder(new Map(), ["buah"]).size).toBe(0);
+  });
+  it("toko berbeda, urutan berbeda", () => {
+    const hariHari = learnOrder(new Map(), ["buah", "bumbu", "sabun"]);
+    const naga = learnOrder(new Map(), ["yogurt", "nugget", "ayam"]);
+    const items = [it_("sabun", "Sabun"), it_("buah", "Buah"), it_("bumbu", "Bumbu")];
+    expect(sortByRoute(items, hariHari).map((i) => i.name)).toEqual(["Buah", "Bumbu", "Sabun"]);
+    const mixed = [it_("ayam", "Ayam"), it_("yogurt", "Yogurt"), it_("nugget", "Nugget")];
+    expect(sortByRoute(mixed, naga).map((i) => i.name)).toEqual(["Yogurt", "Nugget", "Ayam"]);
+  });
+  it("posisi belum diketahui di akhir, yang dicentang turun menurut waktu centang", () => {
+    const order = learnOrder(new Map(), ["buah", "sabun"]);
+    const items = [it_("baru", "Aneh"), it_("sabun", "Sabun"), it_("buah", "Buah", true), it_("x", "Zzz", true)];
+    const sorted = sortByRoute(items, order, new Map([["buah", 2], ["x", 1]]));
+    expect(sorted.map((i) => i.name)).toEqual(["Sabun", "Aneh", "Zzz", "Buah"]);
+    expect(sorted.find((i) => i.name === "Aneh")!.known).toBe(false);
   });
 });
 

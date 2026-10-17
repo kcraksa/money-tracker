@@ -6,6 +6,7 @@ export type Category = {
   lump_sum: boolean;
   due_day: number | null;
   sort_order: number;
+  active?: boolean;
 };
 
 export type Member = { id: string; user_id: string; display_name: string; household_id: string };
@@ -41,12 +42,14 @@ export type ListItem = {
   unit_price_actual: number;
   checked: boolean;
   is_extra: boolean;
+  checked_at?: string | null;
 };
 
 export type ShoppingList = {
   id: string;
   month: string;
   status: "open" | "done";
+  store_id?: string | null;
   completed_by: string | null;
   completed_at: string | null;
 };
