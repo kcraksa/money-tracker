@@ -168,7 +168,6 @@ export function ShoppingChecklist({ listId, periodLabel, initialItems, stores, s
 
       <div className="grid grid-cols-[auto_1fr] gap-2">
         <form action={refreshList}>
-          <input type="hidden" name="list_id" value={listId} />
           <button className="btn-soft h-full px-4" aria-label="Segarkan rekomendasi dari stok" title="Segarkan dari stok">
             <RefreshCw className="h-[18px] w-[18px]" aria-hidden />
           </button>

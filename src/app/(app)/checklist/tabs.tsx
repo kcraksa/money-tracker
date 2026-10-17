@@ -5,7 +5,8 @@ import { usePathname } from "next/navigation";
 import { Package, ShoppingCart } from "@/components/icons";
 
 export function ChecklistTabs() {
-  const onStock = usePathname().startsWith("/checklist/stok");
+  const path = usePathname();
+  const onStock = path.startsWith("/checklist/stok") || path.startsWith("/checklist/cek");
   const tab = (active: boolean) =>
     `flex flex-1 items-center justify-center gap-2 rounded-xl py-2.5 text-sm font-semibold transition ${
       active ? "bg-surface text-fg shadow-card" : "text-muted"

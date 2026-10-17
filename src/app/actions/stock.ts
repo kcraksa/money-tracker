@@ -4,7 +4,9 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { getCtx } from "@/lib/ctx";
 import { todayISO } from "@/lib/date";
+import { syncListWithStock } from "@/lib/server/shopping-sync";
 import { syncQuests } from "@/lib/server/xp";
+import { planStockCheck } from "@/lib/stock-check";
 
 const dec = (v: FormDataEntryValue | null, max = 100000) => {
   const n = Number(String(v ?? "").replace(",", "."));
@@ -59,4 +61,32 @@ export async function applySuggestion(form: FormData) {
   await supabase.from("item").update({ monthly_need: dec(form.get("value")) }).eq("id", String(form.get("id")));
   revalidatePath("/checklist", "layout");
   redirect("/checklist/stok");
+}
+
+/**
+ * Selesai cek stok: sesuaikan stok dengan hitungan di rumah, tandai waktu cek, lalu
+ * buat/segarkan checklist belanja dari stok yang baru.
+ */
+export async function applyStockCheck(counted: { itemId: string; count: number }[]): Promise<{ error?: string }> {
+  const { supabase, me, householdId } = await getCtx();
+  const today = todayISO();
+  const clean = (counted ?? [])
+    .map((c) => ({ itemId: String(c.itemId), count: Math.min(100000, Math.max(0, Math.round(Number(c.count) * 100) / 100)) }))
+    .filter((c) => Number.isFinite(c.count));
+
+  // Bandingkan dengan stok yang tersimpan sekarang (bukan yang tampil di layar) supaya aman dari perubahan pasangan.
+  const { data } = await supabase.from("item").select("id, stock").eq("active", true);
+  const current = new Map((data ?? []).map((r) => [r.id as string, Number(r.stock)]));
+
+  for (const ch of planStockCheck(current, clean)) {
+    const { error } = await supabase.rpc("adjust_stock", { p_item: ch.itemId, p_delta: ch.delta, p_reason: ch.reason });
+    if (error) return { error: "Gagal memperbarui stok, coba lagi." };
+  }
+  const ids = [...current.keys()];
+  if (ids.length) await supabase.from("item").update({ stock_checked_at: new Date().toISOString() }).in("id", ids);
+
+  await syncQuests(supabase, householdId, today);
+  await syncListWithStock(supabase, householdId, me.id, today);
+  revalidatePath("/", "layout");
+  redirect("/checklist");
 }

@@ -5,6 +5,7 @@ import {
   rangeEnd, resolvePeriod, totalDays,
 } from "./period";
 import { learnOrder, sortByRoute } from "./route";
+import { agoLabel, needsStockCheck, planStockCheck } from "./stock-check";
 import { forecast } from "./forecast";
 import { BADGES, computeStreak, levelInfo, questProgress, savingPoints } from "./gamification";
 import { evaluate, recommend, suggestMonthlyNeed } from "./shopping";
@@ -242,5 +243,45 @@ describe("gamifikasi", () => {
     expect(BADGES.map((b) => b.title)).toEqual([
       "Belanja Sesuai Rekomendasi", "Budget Aman", "Listrik Lunas Tepat Waktu",
     ]);
+  });
+});
+
+describe("cek stok", () => {
+  const current = new Map([["sabun", 2], ["beras", 1], ["minyak", 3]]);
+  it("penurunan = pemakaian nyata, kenaikan = penyesuaian, yang sama diabaikan", () => {
+    const plan = planStockCheck(current, [
+      { itemId: "sabun", count: 0 }, { itemId: "beras", count: 4 }, { itemId: "minyak", count: 3 },
+    ]);
+    expect(plan).toEqual([
+      { itemId: "sabun", delta: -2, reason: "use" },
+      { itemId: "beras", delta: 3, reason: "adjust" },
+    ]);
+  });
+  it("hitungan negatif dianggap 0, barang tak dikenal dan angka rusak diabaikan", () => {
+    const plan = planStockCheck(current, [
+      { itemId: "sabun", count: -5 }, { itemId: "hantu", count: 9 }, { itemId: "beras", count: NaN },
+    ]);
+    expect(plan).toEqual([{ itemId: "sabun", delta: -2, reason: "use" }]);
+  });
+  it("desimal dibulatkan 2 digit", () => {
+    expect(planStockCheck(new Map([["x", 1.1]]), [{ itemId: "x", count: 0.7 }])).toEqual([
+      { itemId: "x", delta: -0.4, reason: "use" },
+    ]);
+  });
+  it("label terakhir dicek memakai tanggal WIB", () => {
+    const today = "2026-10-17";
+    expect(agoLabel(null, today)).toBe("belum pernah dicek");
+    expect(agoLabel("2026-10-17T02:00:00Z", today)).toBe("dicek hari ini");
+    expect(agoLabel("2026-10-16T10:00:00Z", today)).toBe("dicek kemarin");
+    expect(agoLabel("2026-10-12T10:00:00Z", today)).toBe("dicek 5 hari lalu");
+    // 16 Okt 18:00 UTC = 17 Okt 01:00 WIB -> hari ini
+    expect(agoLabel("2026-10-16T18:00:00Z", today)).toBe("dicek hari ini");
+  });
+  it("disarankan cek bila belum pernah atau sudah >= 3 hari", () => {
+    const today = "2026-10-17";
+    expect(needsStockCheck([], today)).toBe(true);
+    expect(needsStockCheck([null, null], today)).toBe(true);
+    expect(needsStockCheck(["2026-10-16T10:00:00Z", "2026-10-10T10:00:00Z"], today)).toBe(false);
+    expect(needsStockCheck(["2026-10-14T10:00:00Z"], today)).toBe(true);
   });
 });
