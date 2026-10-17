@@ -4,7 +4,9 @@ import { ChevronRight, ClipboardCheck, Lightbulb, Plus } from "@/components/icon
 import { EmptyState } from "@/components/empty-state";
 import { Package } from "@/components/icons";
 import { PageHeader } from "@/components/page-header";
+import { DataNotice } from "@/components/data-notice";
 import { getCtx } from "@/lib/ctx";
+import { loadActiveItems } from "@/lib/server/items";
 import { addMonths, monthStart, todayISO } from "@/lib/date";
 import { qty, rupiah } from "@/lib/format";
 import { recommend, suggestMonthlyNeed } from "@/lib/shopping";
@@ -21,11 +23,11 @@ export default async function StokPage() {
   const since = addMonths(monthStart(today), -4);
 
   const [itemsRes, logsRes] = await Promise.all([
-    supabase.from("item").select("id, name, unit, monthly_need, stock, last_price, active, stock_checked_at").eq("active", true).order("name"),
+    loadActiveItems<Item>(supabase, "id, name, unit, monthly_need, stock, last_price, active"),
     supabase.from("stock_log").select("item_id, delta, created_at").eq("reason", "use").gte("created_at", `${since}T00:00:00+07:00`),
   ]);
 
-  const items = ((itemsRes.data ?? []) as (Item & { stock_checked_at: string | null })[]).map((i) => ({
+  const items = itemsRes.rows.map((i) => ({
     ...i, monthly_need: Number(i.monthly_need), stock: Number(i.stock), last_price: Number(i.last_price),
   }));
   const logsBy = new Map<string, { delta: number; created_on: string }[]>();
@@ -38,6 +40,8 @@ export default async function StokPage() {
   return (
     <div className="flex flex-col gap-4">
       <PageHeader title="Stok rumah" subtitle="Tekan − saat terpakai, + saat menambah" />
+
+      <DataNotice outdated={itemsRes.outdated} error={itemsRes.error} />
 
       {items.length > 0 && (
         <Link href="/checklist/cek" transitionTypes={["nav-forward"]} className="card flex items-center gap-3 p-4 transition active:scale-[0.99]">
@@ -52,7 +56,7 @@ export default async function StokPage() {
         </Link>
       )}
 
-      {items.length === 0 && (
+      {items.length === 0 && !itemsRes.error && (
         <EmptyState icon={<Package className="h-8 w-8" />} title="Belum ada barang">
           <p className="max-w-xs text-sm text-muted">Tambahkan barang belanja bulanan di bawah. Satuan dan harga mengikuti yang tertera di rak.</p>
         </EmptyState>
