@@ -14,6 +14,7 @@ import { agoLabel } from "@/lib/stock-check";
 import type { Item } from "@/lib/types";
 import { ItemForm } from "./item-form";
 import { StockStepper } from "./stock-stepper";
+import { SubmitButton } from "@/components/submit-button";
 
 export const metadata = { title: "Stok rumah" };
 
@@ -91,7 +92,7 @@ export default async function StokPage() {
                   </span>
                   <input type="hidden" name="id" value={i.id} />
                   <input type="hidden" name="value" value={sug.suggested} />
-                  <button className="btn-primary min-h-9 shrink-0 px-3 text-sm">Pakai</button>
+                  <SubmitButton className="btn-primary min-h-9 shrink-0 px-3 text-sm">Pakai</SubmitButton>
                 </form>
               )}
 

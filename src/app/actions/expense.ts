@@ -1,6 +1,6 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
+import { after } from "next/server";
 import { getCtx } from "@/lib/ctx";
 import { addDays, todayISO } from "@/lib/date";
 import { XP, computeStreak } from "@/lib/gamification";
@@ -41,36 +41,43 @@ export async function logExpense(input: {
     spent_on: spentOn,
     note: input.note?.trim() || null,
   };
+  // Jalur kritis: hanya yang perlu sebelum pengguna melihat "tersimpan".
   const { data, error } = await supabase.from("expense").insert(row).select("id").single();
   if (error) {
     if (error.code === "23505" && row.id) return { ok: true, id: row.id, xp: 0, streak: 0, duplicate: true };
     return { ok: false, error: "Gagal menyimpan, coba lagi." };
   }
 
-  let xp = 0;
-  if (await award(supabase, {
-    householdId, memberId: me.id, kind: "log", points: XP.log,
-    ref: `log:${me.id}:${spentOn}`, note: "Catat harian",
-  })) xp += XP.log;
+  // XP catat harian + data streak diambil bersamaan (satu putaran, bukan berurutan).
+  const [logged, days] = await Promise.all([
+    award(supabase, {
+      householdId, memberId: me.id, kind: "log", points: XP.log,
+      ref: `log:${me.id}:${spentOn}`, note: "Catat harian",
+    }).catch(() => false), // gagal memberi XP tidak boleh menggagalkan simpan pengeluaran
+    supabase.from("expense").select("spent_on").gte("spent_on", addDays(today, -120)),
+  ]);
+  const streak = computeStreak((days.data ?? []).map((d) => d.spent_on as string), today);
 
-  const since = addDays(today, -120);
-  const { data: days } = await supabase.from("expense").select("spent_on").gte("spent_on", since);
-  const streak = computeStreak((days ?? []).map((d) => d.spent_on as string), today);
-  if (spentOn === today && streak > 0 && streak % 7 === 0) {
-    if (await award(supabase, {
-      householdId, memberId: me.id, kind: "streak", points: XP.streakWeek,
-      ref: `streak:${today}`, note: `Streak ${streak} hari`,
-    })) xp += XP.streakWeek;
-  }
+  // Sisanya (bonus streak, quest, penutupan periode) tidak perlu ditunggu pengguna.
+  after(async () => {
+    try {
+      if (spentOn === today && streak > 0 && streak % 7 === 0) {
+        await award(supabase, {
+          householdId, memberId: me.id, kind: "streak", points: XP.streakWeek,
+          ref: `streak:${today}`, note: `Streak ${streak} hari`,
+        });
+      }
+      await afterActivity(supabase, householdId, today);
+    } catch (e) {
+      console.error("logExpense after()", e);
+    }
+  });
 
-  await afterActivity(supabase, householdId, today);
-  revalidatePath("/", "layout");
-  return { ok: true, id: data.id as string, xp, streak };
+  return { ok: true, id: data.id as string, xp: logged ? XP.log : 0, streak };
 }
 
 export async function undoExpense(id: string): Promise<{ ok: boolean }> {
   const { supabase } = await getCtx();
   const { error } = await supabase.from("expense").delete().eq("id", id);
-  revalidatePath("/", "layout");
   return { ok: !error };
 }

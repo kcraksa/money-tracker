@@ -4,12 +4,13 @@ import { useActionState } from "react";
 import { Home, Users } from "@/components/icons";
 import { Logo } from "@/components/logo";
 import { createHousehold, joinHousehold, type OnboardingState } from "./actions";
+import { SubmitButton } from "@/components/submit-button";
 
 const initial: OnboardingState = {};
 
 export function OnboardingForms({ defaultName }: { defaultName: string }) {
-  const [createState, createAction, creating] = useActionState(createHousehold, initial);
-  const [joinState, joinAction, joining] = useActionState(joinHousehold, initial);
+  const [createState, createAction] = useActionState(createHousehold, initial);
+  const [joinState, joinAction] = useActionState(joinHousehold, initial);
 
   return (
     <main className="mx-auto flex min-h-dvh max-w-md flex-col justify-center gap-6 px-6 py-10">
@@ -28,7 +29,7 @@ export function OnboardingForms({ defaultName }: { defaultName: string }) {
         </div>
         <input name="name" className="input" placeholder="Nama rumah tangga (opsional)" aria-label="Nama rumah tangga" />
         <input name="display_name" required defaultValue={defaultName} className="input" placeholder="Nama kamu, mis. Budi" aria-label="Nama kamu" />
-        <button className="btn-primary" disabled={creating}>{creating ? "Membuat…" : "Buat & dapatkan kode"}</button>
+        <SubmitButton pendingLabel="Membuat…" className="btn-primary" >Buat & dapatkan kode</SubmitButton>
         {createState.error && <p role="alert" className="text-sm text-danger">{createState.error}</p>}
       </form>
 
@@ -43,7 +44,7 @@ export function OnboardingForms({ defaultName }: { defaultName: string }) {
         </div>
         <input name="code" required className="input text-center font-bold uppercase tracking-[0.3em]" placeholder="KODE" aria-label="Kode undangan" />
         <input name="display_name" required defaultValue={defaultName} className="input" placeholder="Nama kamu, mis. Siti" aria-label="Nama kamu" />
-        <button className="btn-soft" disabled={joining}>{joining ? "Bergabung…" : "Gabung"}</button>
+        <SubmitButton pendingLabel="Bergabung…" className="btn-soft" >Gabung</SubmitButton>
         {joinState.error && <p role="alert" className="text-sm text-danger">{joinState.error}</p>}
       </form>
     </main>

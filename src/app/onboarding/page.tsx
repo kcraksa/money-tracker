@@ -9,12 +9,12 @@ export const dynamic = "force-dynamic";
 export default async function OnboardingPage() {
   if (!hasSupabaseEnv) redirect("/setup");
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect("/login");
+  const { data } = await supabase.auth.getClaims();
+  const claims = data?.claims;
+  if (!claims?.sub) redirect("/login");
 
   // Login Google membawa nama lengkap; ambil nama depannya sebagai isian awal.
-  const full = String(user.user_metadata?.full_name ?? user.user_metadata?.name ?? "").trim();
+  const meta = (claims.user_metadata ?? {}) as { full_name?: string; name?: string };
+  const full = String(meta.full_name ?? meta.name ?? "").trim();
   return <OnboardingForms defaultName={full.split(/\s+/)[0] ?? ""} />;
 }

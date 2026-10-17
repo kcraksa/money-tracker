@@ -3,11 +3,13 @@
 import { useState } from "react";
 import { adjustStock } from "@/app/actions/stock";
 import { Minus, Plus } from "@/components/icons";
+import { Spinner } from "@/components/spinner";
 import { qty } from "@/lib/format";
 import { haptic } from "@/lib/haptics";
 
 export function StockStepper({ itemId, initial, unit }: { itemId: string; initial: number; unit: string }) {
   const [stock, setStock] = useState(initial);
+  const [inflight, setInflight] = useState(0);
   // Pasangan mengubah stok: ikuti nilai server yang baru.
   const [seen, setSeen] = useState(initial);
   if (seen !== initial) {
@@ -19,6 +21,7 @@ export function StockStepper({ itemId, initial, unit }: { itemId: string; initia
     haptic("tap");
     const prev = stock;
     setStock(Math.max(0, Math.round((stock + delta) * 100) / 100)); // langsung terasa, tanpa menunggu server
+    setInflight((n) => n + 1);
     try {
       const r = await adjustStock(itemId, delta);
       if (r.stock !== undefined) setStock(r.stock);
@@ -27,6 +30,8 @@ export function StockStepper({ itemId, initial, unit }: { itemId: string; initia
       // Tanpa sinyal: kembalikan angka supaya layar tidak berbohong soal stok.
       haptic("warn");
       setStock(prev);
+    } finally {
+      setInflight((n) => n - 1);
     }
   }
 
@@ -38,7 +43,7 @@ export function StockStepper({ itemId, initial, unit }: { itemId: string; initia
       </button>
       <div className="w-14 text-center leading-tight">
         <div key={stock} className="animate-tick text-lg font-bold tabular-nums">{qty(stock)}</div>
-        <div className="text-[10px] text-muted">{unit}</div>
+        <div className="flex h-3 items-center justify-center text-[10px] text-muted">{inflight > 0 ? <Spinner className="h-2.5 w-2.5" /> : unit}</div>
       </div>
       <button onClick={() => step(1)} aria-label="Tambah stok"
         className="flex h-11 w-11 items-center justify-center rounded-xl bg-primary text-primary-fg shadow-card transition active:scale-95">

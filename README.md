@@ -154,6 +154,21 @@ public/sw.js                        service worker: layar Catat tetap terbuka sa
 tests/schema.test.ts                menguji skema + RLS pada Postgres nyata (pglite)
 ```
 
+## Kecepatan
+
+Simpan terasa instan karena: (1) tampilan **optimistik** — "tersimpan" muncul seketika dan pengiriman berjalan di latar belakang
+(gagal jaringan masuk antrean, bisa diurungkan kapan saja); (2) jalur simpan di server hanya memuat yang perlu — bonus streak,
+quest, dan penutupan periode dikerjakan setelah balasan terkirim (`after()`); (3) login diverifikasi **lokal** (`getClaims`),
+bukan lewat jaringan di tiap permintaan.
+
+Agar server juga cepat, perhatikan dua hal ini:
+
+- **Samakan wilayah Vercel dan Supabase.** Fungsi Vercel secara default berjalan di Washington D.C. (`iad1`); bila Supabase di Singapura,
+  tiap query menempuh ±230 ms pulang-pergi. Atur *Settings → Functions → Region* di Vercel ke wilayah terdekat dengan project
+  Supabase (Singapura = `sin1`), atau tambahkan `"regions": ["sin1"]` di `vercel.json`.
+- **Pakai JWT Signing Keys asimetris** (Supabase → *Project Settings → JWT Keys*; project baru sudah memakainya). Dengan kunci
+  lama (simetris), `getClaims` otomatis kembali ke cek jaringan: tetap benar, hanya tidak secepat itu.
+
 ## Catatan teknis
 
 - **Offline:** saat tanpa sinyal, catatan disimpan di HP (dengan ID unik) dan dikirim otomatis begitu online. ID unik mencegah catatan ganda.

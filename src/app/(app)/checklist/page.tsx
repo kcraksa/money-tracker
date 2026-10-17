@@ -11,6 +11,7 @@ import { loadPeriodContext } from "@/lib/server/period";
 import { needsStockCheck } from "@/lib/stock-check";
 import type { ListItem, ShoppingList } from "@/lib/types";
 import { ShoppingChecklist } from "./shopping-checklist";
+import { SubmitButton } from "@/components/submit-button";
 
 export const metadata = { title: "Checklist belanja" };
 
@@ -50,7 +51,7 @@ export default async function ChecklistPage() {
             <Link href="/checklist/cek" transitionTypes={["nav-forward"]} className="btn-primary mt-1">
               <ClipboardCheck className="h-[18px] w-[18px]" aria-hidden /> Cek stok dulu (disarankan)
             </Link>
-            <form action={createList}><button className="btn-ghost text-sm">Lewati, buat checklist sekarang</button></form>
+            <form action={createList}><SubmitButton pendingLabel="Membuat…" className="btn-ghost text-sm">Lewati, buat checklist sekarang</SubmitButton></form>
           </>
         )}
       </EmptyState>

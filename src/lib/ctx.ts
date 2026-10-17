@@ -8,18 +8,19 @@ import type { Member } from "@/lib/types";
 export const getCtx = cache(async () => {
   if (!hasSupabaseEnv) redirect("/setup");
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect("/login");
+  // Verifikasi JWT lokal (lihat session.ts); cukup untuk mengenali siapa yang login.
+  const { data: auth } = await supabase.auth.getClaims();
+  const claims = auth?.claims;
+  if (!claims?.sub) redirect("/login");
+  const userId = claims.sub;
 
   const { data: members } = await supabase
     .from("member")
     .select("id, user_id, display_name, household_id")
     .order("created_at");
   const all = (members ?? []) as Member[];
-  const me = all.find((m) => m.user_id === user.id);
+  const me = all.find((m) => m.user_id === userId);
   if (!me) redirect("/onboarding");
 
-  return { supabase, user, me, members: all, householdId: me.household_id };
+  return { supabase, user: { id: userId, email: claims.email as string | undefined }, me, members: all, householdId: me.household_id };
 });

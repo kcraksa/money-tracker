@@ -20,9 +20,10 @@ export async function updateSession(request: NextRequest) {
     },
   });
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  // getClaims memverifikasi tanda tangan JWT secara lokal (kunci publik di-cache), jauh lebih cepat
+  // daripada getUser yang selalu menembak server Auth. Sesi yang hampir kedaluwarsa tetap disegarkan.
+  const { data } = await supabase.auth.getClaims();
+  const user = data?.claims ?? null;
 
   const path = request.nextUrl.pathname;
   const isPublic = PUBLIC_PREFIXES.some((p) => path === p || path.startsWith(p + "/"));

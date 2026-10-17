@@ -5,6 +5,7 @@ import { useTransition } from "react";
 import { undoExpense } from "@/app/actions/expense";
 import { CategoryIcon } from "@/components/category-icon";
 import { X } from "@/components/icons";
+import { Spinner } from "@/components/spinner";
 import { rupiah } from "@/lib/format";
 
 type Row = {
@@ -41,7 +42,7 @@ export function RecentList({ rows, today }: { rows: Row[]; today: string }) {
                 onClick={() => start(async () => { await undoExpense(r.id); router.refresh(); })}
                 className="-mr-2 flex h-10 w-10 items-center justify-center rounded-full text-muted transition hover:bg-surface-2"
               >
-                <X className="h-4 w-4" aria-hidden />
+                {pending ? <Spinner /> : <X className="h-4 w-4" aria-hidden />}
               </button>
             )}
           </li>
