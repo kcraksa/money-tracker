@@ -1,0 +1,60 @@
+"use server";
+
+import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
+import { getCtx } from "@/lib/ctx";
+import { createClient } from "@/lib/supabase/server";
+
+const num = (v: FormDataEntryValue | null) => Math.max(0, Math.round(Number(String(v ?? "").replace(/\D/g, "")) || 0));
+
+export async function saveBudgets(form: FormData) {
+  const { supabase, householdId } = await getCtx();
+  const { data: cats } = await supabase.from("category").select("id, kind");
+
+  for (const c of cats ?? []) {
+    const amount = num(form.get(`budget_${c.id}`));
+    await supabase.from("budget").upsert(
+      { household_id: householdId, category_id: c.id, amount },
+      { onConflict: "category_id" },
+    );
+    if (c.kind === "fixed") {
+      const due = num(form.get(`due_${c.id}`));
+      await supabase.from("category").update({ due_day: due >= 1 && due <= 28 ? due : null }).eq("id", c.id);
+    }
+  }
+  revalidatePath("/", "layout");
+  redirect("/pengaturan?tersimpan=1");
+}
+
+export async function addQuick(form: FormData) {
+  const { supabase, householdId } = await getCtx();
+  const amount = num(form.get("amount"));
+  const categoryId = String(form.get("category_id") ?? "");
+  const label = String(form.get("label") ?? "").trim();
+  if (amount > 0 && categoryId && label) {
+    await supabase.from("quick_expense").insert({ household_id: householdId, category_id: categoryId, label, amount });
+  }
+  revalidatePath("/", "layout");
+  redirect("/pengaturan");
+}
+
+export async function deleteQuick(form: FormData) {
+  const { supabase } = await getCtx();
+  await supabase.from("quick_expense").delete().eq("id", String(form.get("id")));
+  revalidatePath("/", "layout");
+  redirect("/pengaturan");
+}
+
+export async function saveName(form: FormData) {
+  const { supabase, me } = await getCtx();
+  const name = String(form.get("display_name") ?? "").trim();
+  if (name) await supabase.from("member").update({ display_name: name }).eq("id", me.id);
+  revalidatePath("/", "layout");
+  redirect("/pengaturan?tersimpan=1");
+}
+
+export async function signOut() {
+  const supabase = await createClient();
+  await supabase.auth.signOut();
+  redirect("/login");
+}
