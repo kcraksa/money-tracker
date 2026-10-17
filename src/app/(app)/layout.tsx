@@ -9,7 +9,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   const { householdId } = await getCtx();
   return (
     <>
-      <div className="mx-auto w-full max-w-md px-4 pb-28 pt-4">{children}</div>
+      <div className="mx-auto w-full max-w-md px-4 pb-32 pt-5">{children}</div>
       <BottomNav />
       <RealtimeRefresh householdId={householdId} />
     </>

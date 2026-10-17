@@ -40,3 +40,12 @@ const BULAN = [
 export function monthLabel(iso: string): string {
   return `${BULAN[Number(iso.slice(5, 7)) - 1]} ${iso.slice(0, 4)}`;
 }
+
+/** Sapaan sesuai jam WIB. */
+export function greeting(now: Date = new Date()): string {
+  const h = Number(new Intl.DateTimeFormat("en-GB", { timeZone: TZ, hour: "2-digit", hour12: false }).format(now)) % 24;
+  if (h < 11) return "Selamat pagi";
+  if (h < 15) return "Selamat siang";
+  if (h < 19) return "Selamat sore";
+  return "Selamat malam";
+}

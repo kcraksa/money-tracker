@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { Mail } from "lucide-react";
+import { Logo } from "@/components/logo";
 import { createClient } from "@/lib/supabase/client";
 
 export default function LoginPage() {
@@ -44,47 +46,57 @@ export default function LoginPage() {
   }
 
   return (
-    <main className="mx-auto flex min-h-dvh max-w-md flex-col justify-center gap-6 p-6">
-      <div>
-        <div className="text-5xl">🪙</div>
-        <h1 className="mt-3 text-3xl font-bold">Catatan Kita</h1>
-        <p className="mt-1 text-muted">Catat pengeluaran rumah tangga berdua, tanpa ribet.</p>
+    <main className="relative mx-auto flex min-h-dvh max-w-md flex-col justify-center gap-8 overflow-hidden px-6 py-10">
+      <div className="pointer-events-none absolute -left-24 -top-24 h-72 w-72 rounded-full bg-primary/15 blur-3xl" aria-hidden />
+      <div className="pointer-events-none absolute -bottom-24 -right-24 h-72 w-72 rounded-full bg-accent/15 blur-3xl" aria-hidden />
+
+      <div className="relative flex flex-col gap-4">
+        <Logo size={64} />
+        <div>
+          <h1 className="text-[32px] font-extrabold leading-tight tracking-tight">Catatan Kita</h1>
+          <p className="mt-1 text-base text-muted">Catat pengeluaran rumah tangga berdua, cepat dan tanpa ribet.</p>
+        </div>
       </div>
 
       {!sent ? (
-        <form onSubmit={sendLink} className="card flex flex-col gap-3">
-          <label className="label" htmlFor="email">Email</label>
-          <input
-            id="email" type="email" required autoComplete="email" inputMode="email"
-            className="input" placeholder="nama@email.com"
-            value={email} onChange={(e) => setEmail(e.target.value)}
-          />
+        <form onSubmit={sendLink} className="card relative flex flex-col gap-4 p-5">
+          <div>
+            <label className="label" htmlFor="email">Email</label>
+            <input
+              id="email" type="email" required autoComplete="email" inputMode="email"
+              className="input" placeholder="nama@email.com"
+              value={email} onChange={(e) => setEmail(e.target.value)}
+            />
+          </div>
           <button className="btn-primary" disabled={busy}>
-            {busy ? "Mengirim…" : "Kirim link masuk"}
+            <Mail className="h-[18px] w-[18px]" aria-hidden /> {busy ? "Mengirim…" : "Kirim link masuk"}
           </button>
-          <p className="text-sm text-muted">Tanpa password. Kami kirim link ke email kamu.</p>
+          <p className="text-center text-xs text-muted">Tanpa password. Kami kirim link masuk ke emailmu.</p>
         </form>
       ) : (
-        <form onSubmit={verify} className="card flex flex-col gap-3">
-          <p>
-            Link masuk dikirim ke <b>{email}</b>. Buka dari HP ini, atau masukkan kode 6 digit dari
-            email di bawah (cara ini paling aman kalau aplikasi sudah dipasang di layar utama).
-          </p>
+        <form onSubmit={verify} className="card animate-pop relative flex flex-col gap-4 p-5">
+          <div>
+            <h2 className="text-lg font-bold tracking-tight">Cek emailmu</h2>
+            <p className="mt-1 text-sm text-muted">
+              Link masuk dikirim ke <b className="text-fg">{email}</b>. Buka dari HP ini, atau masukkan kode 6 digit
+              dari email (paling mudah kalau aplikasi sudah dipasang di layar utama).
+            </p>
+          </div>
           <input
-            inputMode="numeric" autoComplete="one-time-code" maxLength={8}
-            className="input text-center text-2xl tracking-widest" placeholder="123456"
+            inputMode="numeric" autoComplete="one-time-code" maxLength={8} aria-label="Kode 6 digit"
+            className="input text-center text-2xl font-bold tracking-[0.4em]" placeholder="••••••"
             value={code} onChange={(e) => setCode(e.target.value.replace(/\D/g, ""))}
           />
           <button className="btn-primary" disabled={busy || code.length < 6}>
             {busy ? "Memeriksa…" : "Masuk"}
           </button>
-          <button type="button" className="text-sm text-muted underline" onClick={() => setSent(false)}>
+          <button type="button" className="btn-ghost min-h-10 text-sm" onClick={() => setSent(false)}>
             Ganti email
           </button>
         </form>
       )}
 
-      {error && <p role="alert" className="rounded-xl bg-danger-bg p-3 text-danger">{error}</p>}
+      {error && <p role="alert" className="relative rounded-2xl bg-danger-bg p-3.5 text-sm text-danger">{error}</p>}
     </main>
   );
 }

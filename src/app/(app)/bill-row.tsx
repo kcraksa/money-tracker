@@ -2,6 +2,8 @@
 
 import { useState, useTransition } from "react";
 import { markBillPaid, unmarkBill } from "@/app/actions/bills";
+import { CategoryIcon } from "@/components/category-icon";
+import { Check } from "@/components/icons";
 import { rupiah } from "@/lib/format";
 
 type Props = {
@@ -28,11 +30,11 @@ export function BillRow({ categoryId, name, icon, amount, dueDay, paid }: Props)
   }
 
   return (
-    <li className="flex flex-col gap-2 px-4 py-3">
+    <li className="flex flex-col gap-3 px-4 py-3.5">
       <div className="flex items-center gap-3">
-        <span className="text-xl" aria-hidden>{icon}</span>
+        <CategoryIcon icon={icon} />
         <div className="min-w-0 flex-1">
-          <div className="font-medium">{name}</div>
+          <div className="font-semibold">{name}</div>
           <div className="text-xs text-muted">
             {amount ? rupiah(amount) : "Nominal belum diatur"}
             {dueDay ? ` · jatuh tempo tgl ${dueDay}` : ""}
@@ -42,24 +44,24 @@ export function BillRow({ categoryId, name, icon, amount, dueDay, paid }: Props)
           <button
             disabled={pending}
             onClick={() => start(() => unmarkBill(categoryId))}
-            className="min-h-10 rounded-full bg-ok-bg px-3 text-sm font-semibold text-ok"
-            aria-label={`${name} sudah lunas, ketuk untuk batalkan`}
+            className={`pill min-h-9 px-3 ${paid.onTime ? "bg-ok-bg text-ok" : "bg-warn-bg text-warn"}`}
+            aria-label={`${name} sudah lunas, ketuk untuk membatalkan`}
           >
-            Lunas ✓{paid.onTime ? "" : " (telat)"}
+            <Check className="h-3.5 w-3.5" aria-hidden /> Lunas{paid.onTime ? "" : " · telat"}
           </button>
         ) : (
-          <button className="btn-soft min-h-10 px-3 text-sm" onClick={() => setEditing((v) => !v)}>
-            Belum — bayar
+          <button className="btn-soft min-h-9 px-3 text-sm" onClick={() => setEditing((v) => !v)} aria-expanded={editing}>
+            Bayar
           </button>
         )}
       </div>
       {editing && !paid && (
-        <div className="flex gap-2">
+        <div className="animate-pop flex gap-2">
           <input
             inputMode="numeric" className="input" aria-label={`Nominal ${name}`} placeholder="Nominal"
             value={value} onChange={(e) => setValue(e.target.value.replace(/\D/g, ""))}
           />
-          <button className="btn-primary" disabled={pending || !value} onClick={pay}>
+          <button className="btn-primary shrink-0" disabled={pending || !value} onClick={pay}>
             {pending ? "…" : "Tandai lunas"}
           </button>
         </div>

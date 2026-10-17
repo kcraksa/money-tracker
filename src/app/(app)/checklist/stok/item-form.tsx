@@ -26,7 +26,7 @@ export function ItemForm({ item }: { item?: Item }) {
             <input name="stock" inputMode="decimal" className="input" defaultValue={0} />
           </div>
         )}
-        <button className="btn-primary col-span-2">{item ? "Simpan perubahan" : "Tambah barang"}</button>
+        <button className="btn-primary col-span-2 mt-1">{item ? "Simpan perubahan" : "Tambah barang"}</button>
       </form>
       {item && (
         <form action={archiveItem}>

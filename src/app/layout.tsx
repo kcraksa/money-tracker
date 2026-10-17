@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import { GeistSans } from "geist/font/sans";
 import "./globals.css";
 import { ServiceWorker } from "@/components/service-worker";
 
@@ -24,7 +25,7 @@ const themeScript = `try{var t=localStorage.getItem("theme");if(t)document.docum
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="id" suppressHydrationWarning>
+    <html lang="id" className={GeistSans.variable} suppressHydrationWarning>
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeScript }} />
       </head>

@@ -1,5 +1,6 @@
 "use client";
 
+import { Moon, Sun } from "lucide-react";
 import { useSyncExternalStore } from "react";
 
 type Theme = "light" | "dark";
@@ -34,9 +35,9 @@ export function ThemeToggle() {
     <button
       onClick={toggle}
       aria-label={theme === "dark" ? "Ganti ke tema terang" : "Ganti ke tema gelap"}
-      className="flex h-11 w-11 items-center justify-center rounded-full bg-surface-2 text-lg"
+      className="flex h-10 w-10 items-center justify-center rounded-full border border-border bg-surface text-muted shadow-card transition active:scale-95"
     >
-      {theme === "dark" ? "☀️" : "🌙"}
+      {theme === "dark" ? <Sun className="h-[18px] w-[18px]" /> : <Moon className="h-[18px] w-[18px]" />}
     </button>
   );
 }

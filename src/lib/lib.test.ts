@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { addDays, addMonths, daysInMonth, todayISO, weekStart } from "./date";
+import { addDays, addMonths, daysInMonth, greeting, todayISO, weekStart } from "./date";
 import { forecast } from "./forecast";
 import { BADGES, computeStreak, levelInfo, questProgress, savingPoints } from "./gamification";
 import { evaluate, recommend, suggestMonthlyNeed } from "./shopping";
@@ -22,10 +22,19 @@ describe("date", () => {
   });
 });
 
+describe("sapaan", () => {
+  it("mengikuti jam WIB", () => {
+    expect(greeting(new Date("2026-10-17T00:30:00Z"))).toBe("Selamat pagi"); // 07:30 WIB
+    expect(greeting(new Date("2026-10-17T06:00:00Z"))).toBe("Selamat siang"); // 13:00
+    expect(greeting(new Date("2026-10-17T09:30:00Z"))).toBe("Selamat sore"); // 16:30
+    expect(greeting(new Date("2026-10-17T14:00:00Z"))).toBe("Selamat malam"); // 21:00
+  });
+});
+
 describe("format", () => {
   it("rupiah & qty", () => {
-    expect(rupiah(1250000)).toBe("Rp 1.250.000");
-    expect(rupiah(-5000)).toBe("-Rp 5.000");
+    expect(rupiah(1250000)).toBe("Rp\u00A01.250.000");
+    expect(rupiah(-5000)).toBe("-Rp\u00A05.000");
     expect(qty(2)).toBe("2");
     expect(qty(1.5)).toBe("1,5");
   });

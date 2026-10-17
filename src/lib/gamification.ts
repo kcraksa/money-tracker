@@ -38,16 +38,16 @@ export function computeStreak(dates: string[], today: string): number {
 }
 
 export const BADGES = [
-  { code: "belanja_sesuai", icon: "🛒", title: "Belanja Sesuai Rekomendasi", desc: "Semua barang terbeli sesuai daftar, total tidak melebihi estimasi." },
-  { code: "budget_aman", icon: "🛡️", title: "Budget Aman", desc: "Semua kategori harian berakhir di bawah budget bulan itu." },
-  { code: "listrik_tepat", icon: "⚡", title: "Listrik Lunas Tepat Waktu", desc: "Tagihan listrik dibayar sebelum jatuh tempo." },
+  { code: "belanja_sesuai", icon: "cart", title: "Belanja Sesuai Rekomendasi", desc: "Semua barang terbeli sesuai daftar, total tidak melebihi estimasi." },
+  { code: "budget_aman", icon: "shield", title: "Budget Aman", desc: "Semua kategori harian berakhir di bawah budget bulan itu." },
+  { code: "listrik_tepat", icon: "bolt", title: "Listrik Lunas Tepat Waktu", desc: "Tagihan listrik dibayar sebelum jatuh tempo." },
 ] as const;
 export type BadgeCode = (typeof BADGES)[number]["code"];
 
 export const QUESTS = [
-  { code: "catat_harian", icon: "📝", title: "Catat 5 hari minggu ini", desc: "Tiap hari ada catatan, sekecil apa pun." },
-  { code: "berdua_kompak", icon: "🤝", title: "Berdua kompak", desc: "Masing-masing mencatat minimal 3 pengeluaran minggu ini." },
-  { code: "stok_rapi", icon: "📦", title: "Stok rapi", desc: "Perbarui stok rumah 10 kali minggu ini." },
+  { code: "catat_harian", icon: "notebook", title: "Catat 5 hari minggu ini", desc: "Tiap hari ada catatan, sekecil apa pun." },
+  { code: "berdua_kompak", icon: "users", title: "Berdua kompak", desc: "Masing-masing mencatat minimal 3 pengeluaran minggu ini." },
+  { code: "stok_rapi", icon: "package", title: "Stok rapi", desc: "Perbarui stok rumah 10 kali minggu ini." },
 ] as const;
 export type QuestCode = (typeof QUESTS)[number]["code"];
 

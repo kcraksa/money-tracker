@@ -1,10 +1,12 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState, useTransition } from "react";
-import { getLocal, setLocal, useLocal } from "@/lib/local-store";
 import { logExpense, undoExpense } from "@/app/actions/expense";
+import { Check, Delete, StickyNote, Undo2, WifiOff } from "@/components/icons";
+import { PageHeader } from "@/components/page-header";
 import { addDays } from "@/lib/date";
 import { rupiah } from "@/lib/format";
+import { getLocal, setLocal, useLocal } from "@/lib/local-store";
 import type { Category } from "@/lib/types";
 
 type Quick = { id: string; label: string; amount: number; categoryId: string; icon: string };
@@ -41,6 +43,7 @@ export function CatatForm({
   const toastTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
 
   const amount = Number(digits || 0);
+  const selected = categories.find((c) => c.id === categoryId);
 
   const show = useCallback((t: Toast) => {
     clearTimeout(toastTimer.current);
@@ -85,20 +88,18 @@ export function CatatForm({
         if (!r.ok) return show({ text: r.error, tone: "warn" });
         const bits = [`${label} ${rupiah(p.amount)}`];
         if (r.xp > 0) bits.push(`+${r.xp} XP`);
-        if (r.streak > 1) bits.push(`🔥 ${r.streak} hari`);
-        show({ text: `Tersimpan ✓ ${bits.join(" · ")}`, undoId: r.id, tone: "ok" });
+        if (r.streak > 1) bits.push(`${r.streak} hari beruntun`);
+        show({ text: bits.join(" · "), undoId: r.id, tone: "ok" });
       } catch {
         // Offline: simpan di HP, kirim saat ada sinyal.
-        const q = [...readQueue(), p];
-        writeQueue(q);
-        show({ text: `Offline — ${label} ${rupiah(p.amount)} disimpan di HP`, undoId: p.id, tone: "warn" });
+        writeQueue([...readQueue(), p]);
+        show({ text: `Offline: ${label} ${rupiah(p.amount)} disimpan di HP`, undoId: p.id, tone: "warn" });
       }
     });
   }
 
   function submit() {
     if (!amount || !categoryId) return;
-    const cat = categories.find((c) => c.id === categoryId);
     setLocal(LAST_CAT_KEY, categoryId);
     save(
       {
@@ -106,7 +107,7 @@ export function CatatForm({
         spentOn: yesterday ? addDays(today, -1) : undefined,
         note: note.trim() || undefined,
       },
-      cat?.name ?? "Pengeluaran",
+      selected?.name ?? "Pengeluaran",
     );
     setDigits("");
     setNote("");
@@ -123,8 +124,7 @@ export function CatatForm({
     setToast(null);
     const q = readQueue();
     if (q.some((p) => p.id === id)) {
-      const rest = q.filter((p) => p.id !== id);
-      writeQueue(rest);
+      writeQueue(q.filter((p) => p.id !== id));
       return;
     }
     start(async () => { await undoExpense(id); });
@@ -132,52 +132,81 @@ export function CatatForm({
 
   return (
     <div className="flex flex-col gap-4">
-      <header className="flex items-center justify-between">
-        <h1 className="text-xl font-bold">Catat pengeluaran</h1>
-        {queued > 0 && (
-          <span className="rounded-full bg-warn-bg px-3 py-1 text-xs font-medium text-warn">
-            {queued} menunggu sinyal
-          </span>
-        )}
-      </header>
+      <PageHeader
+        title="Catat"
+        subtitle="Nominal, kategori, simpan."
+        actions={
+          queued > 0 ? (
+            <span className="pill bg-warn-bg text-warn">
+              <WifiOff className="h-3.5 w-3.5" aria-hidden /> {queued} menunggu sinyal
+            </span>
+          ) : undefined
+        }
+      />
 
       {quicks.length > 0 && (
-        <div className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1" aria-label="Tombol cepat">
+        <div className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1" role="group" aria-label="Tombol cepat">
           {quicks.map((q) => (
             <button
               key={q.id} onClick={() => quick(q)} disabled={pending}
-              className="btn-soft shrink-0 whitespace-nowrap border border-border"
+              className="flex min-h-11 shrink-0 items-center gap-2 whitespace-nowrap rounded-full border border-border bg-surface py-1.5 pl-2 pr-4 text-sm font-semibold shadow-card transition active:scale-95 disabled:opacity-50"
             >
-              <span aria-hidden>{q.icon}</span> {q.label} {rupiah(q.amount)}
+              <span className="flex h-8 w-8 items-center justify-center rounded-full bg-primary-soft text-base" aria-hidden>{q.icon}</span>
+              <span>{q.label}</span>
+              <span className="text-muted tabular-nums">{rupiah(q.amount)}</span>
             </button>
           ))}
         </div>
       )}
 
-      <div className="card text-center">
-        <div className="text-sm text-muted">Nominal</div>
+      <section className="card flex flex-col gap-1 px-5 py-4" aria-label="Nominal">
+        <div className="flex items-center justify-between">
+          <span className="flex items-center gap-2 text-sm font-medium text-muted">
+            <span aria-hidden>{selected?.icon}</span> {selected?.name ?? "Pilih kategori"}
+          </span>
+          <div className="flex rounded-full bg-surface-2 p-0.5 text-xs font-semibold" role="group" aria-label="Tanggal">
+            {[false, true].map((y) => (
+              <button
+                key={String(y)} onClick={() => setYesterday(y)} aria-pressed={yesterday === y}
+                className={`min-h-8 rounded-full px-3 transition ${yesterday === y ? "bg-surface text-fg shadow-card" : "text-muted"}`}
+              >
+                {y ? "Kemarin" : "Hari ini"}
+              </button>
+            ))}
+          </div>
+        </div>
         <output
           aria-live="polite"
-          className={`block text-5xl font-extrabold tabular-nums ${amount ? "" : "text-muted/50"}`}
+          className={`block py-1 text-center text-[44px] font-extrabold leading-tight tracking-tight tabular-nums ${amount ? "" : "text-muted/40"}`}
         >
           {rupiah(amount)}
         </output>
-      </div>
-
-      <div className="grid grid-cols-3 gap-2" role="group" aria-label="Pilih kategori">
-        {categories.map((c) => (
-          <button
-            key={c.id}
-            onClick={() => setPicked(c.id)}
-            aria-pressed={categoryId === c.id}
-            className={`flex min-h-16 flex-col items-center justify-center gap-0.5 rounded-xl border-2 px-1 text-sm font-medium transition ${
-              categoryId === c.id ? "border-primary bg-primary/10" : "border-border bg-surface"
-            }`}
-          >
-            <span className="text-2xl" aria-hidden>{c.icon}</span>
-            <span className="text-center leading-tight">{c.name}</span>
+        {showNote ? (
+          <input
+            className="input min-h-10 text-sm" placeholder="Catatan (opsional)" maxLength={80} autoFocus
+            value={note} onChange={(e) => setNote(e.target.value)}
+          />
+        ) : (
+          <button onClick={() => setShowNote(true)} className="mx-auto flex min-h-8 items-center gap-1.5 text-xs font-medium text-muted">
+            <StickyNote className="h-3.5 w-3.5" aria-hidden /> Tambah catatan
           </button>
-        ))}
+        )}
+      </section>
+
+      <div className="flex flex-wrap gap-2" role="group" aria-label="Pilih kategori">
+        {categories.map((c) => {
+          const on = categoryId === c.id;
+          return (
+            <button
+              key={c.id} onClick={() => setPicked(c.id)} aria-pressed={on}
+              className={`flex min-h-11 items-center gap-2 rounded-full border px-4 text-sm font-semibold transition active:scale-95 ${
+                on ? "border-primary bg-primary text-primary-fg shadow-sm" : "border-border bg-surface"
+              }`}
+            >
+              <span aria-hidden>{c.icon}</span> {c.name}
+            </button>
+          );
+        })}
       </div>
 
       <div className="grid grid-cols-3 gap-2" role="group" aria-label="Keypad">
@@ -185,49 +214,31 @@ export function CatatForm({
           <button
             key={k} onClick={() => press(k)}
             aria-label={k === "⌫" ? "Hapus angka terakhir" : undefined}
-            className="min-h-14 rounded-xl bg-surface-2 text-2xl font-semibold active:scale-95 active:bg-border"
+            className="flex h-[52px] items-center justify-center rounded-2xl border border-border bg-surface text-[22px] font-semibold shadow-card transition active:scale-95 active:bg-surface-2"
           >
-            {k}
+            {k === "⌫" ? <Delete className="h-6 w-6 text-muted" aria-hidden /> : k}
           </button>
         ))}
       </div>
 
-      <div className="flex items-center gap-2 text-sm">
-        <button
-          onClick={() => setYesterday((v) => !v)} aria-pressed={yesterday}
-          className={`min-h-10 rounded-full border px-3 ${yesterday ? "border-primary bg-primary/10 font-semibold" : "border-border"}`}
-        >
-          {yesterday ? "Kemarin" : "Hari ini"}
-        </button>
-        <button
-          onClick={() => setShowNote((v) => !v)}
-          className="min-h-10 rounded-full border border-border px-3 text-muted"
-        >
-          {showNote ? "Tutup catatan" : "+ Catatan"}
-        </button>
-      </div>
-      {showNote && (
-        <input
-          className="input" placeholder="Catatan (opsional)" maxLength={80}
-          value={note} onChange={(e) => setNote(e.target.value)}
-        />
-      )}
-
-      <button className="btn-primary min-h-14 text-lg" onClick={submit} disabled={!amount || !categoryId || pending}>
-        {pending ? "Menyimpan…" : "Simpan"}
+      <button className="btn-primary min-h-14 text-base" onClick={submit} disabled={!amount || !categoryId || pending}>
+        {pending ? "Menyimpan…" : amount ? `Simpan ${rupiah(amount)}` : "Simpan"}
       </button>
 
       {toast && (
         <div
           role="status"
-          className={`fixed inset-x-4 bottom-24 z-30 mx-auto flex max-w-md items-center justify-between gap-3 rounded-xl p-3 shadow-lg ${
-            toast.tone === "ok" ? "bg-ok-bg text-ok" : "bg-warn-bg text-warn"
+          className={`animate-pop fixed inset-x-4 bottom-28 z-30 mx-auto flex max-w-md items-center gap-3 rounded-2xl p-3.5 shadow-float ${
+            toast.tone === "ok" ? "bg-fg text-bg" : "bg-warn-bg text-warn"
           }`}
         >
-          <span className="text-sm font-medium">{toast.text}</span>
+          <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${toast.tone === "ok" ? "bg-ok text-bg" : "bg-warn/20"}`}>
+            {toast.tone === "ok" ? <Check className="h-4 w-4" aria-hidden /> : <WifiOff className="h-4 w-4" aria-hidden />}
+          </span>
+          <span className="min-w-0 flex-1 text-sm font-medium">{toast.text}</span>
           {toast.undoId && (
-            <button className="min-h-10 shrink-0 px-2 text-sm font-bold underline" onClick={() => undo(toast.undoId!)}>
-              Urungkan
+            <button className="flex min-h-10 shrink-0 items-center gap-1 px-2 text-sm font-bold" onClick={() => undo(toast.undoId!)}>
+              <Undo2 className="h-4 w-4" aria-hidden /> Urungkan
             </button>
           )}
         </div>

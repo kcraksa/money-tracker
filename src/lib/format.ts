@@ -1,6 +1,7 @@
 export function rupiah(n: number): string {
   const sign = n < 0 ? "-" : "";
-  return `${sign}Rp ${Math.abs(Math.round(n)).toLocaleString("id-ID")}`;
+  // Spasi tak-terputus supaya "Rp" dan angkanya tidak pernah terpisah di akhir baris.
+  return `${sign}Rp\u00A0${Math.abs(Math.round(n)).toLocaleString("id-ID")}`;
 }
 
 /** 2 -> "2", 1.5 -> "1,5". */
