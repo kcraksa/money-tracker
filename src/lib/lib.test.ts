@@ -6,6 +6,7 @@ import {
 } from "./period";
 import { learnOrder, sortByRoute } from "./route";
 import { agoLabel, needsStockCheck, planStockCheck } from "./stock-check";
+import { frequentExpenses } from "./frequent";
 import { forecast } from "./forecast";
 import { BADGES, computeStreak, levelInfo, questProgress, savingPoints } from "./gamification";
 import { evaluate, recommend, suggestMonthlyNeed } from "./shopping";
@@ -283,5 +284,45 @@ describe("cek stok", () => {
     expect(needsStockCheck([null, null], today)).toBe(true);
     expect(needsStockCheck(["2026-10-16T10:00:00Z", "2026-10-10T10:00:00Z"], today)).toBe(false);
     expect(needsStockCheck(["2026-10-14T10:00:00Z"], today)).toBe(true);
+  });
+});
+
+describe("pengeluaran yang sering dicatat", () => {
+  const e = (category_id: string, amount: number, spent_on: string, note: string | null = null) => ({ category_id, amount, note, spent_on });
+
+  it("mengelompokkan kategori + nominal + keterangan, hanya yang berulang", () => {
+    const rows = [
+      e("bensin", 50000, "2026-10-01"), e("bensin", 50000, "2026-10-08"), e("bensin", 50000, "2026-10-15"),
+      e("jajan", 15000, "2026-10-10"), // sekali saja -> tidak muncul
+      e("jajan", 5000, "2026-10-11", "Parkir"), e("jajan", 5000, "2026-10-12", "parkir"),
+    ];
+    const f = frequentExpenses(rows);
+    expect(f.map((x) => [x.categoryId, x.amount, x.note, x.count])).toEqual([
+      ["bensin", 50000, null, 3],
+      ["jajan", 5000, "parkir", 2], // huruf besar/kecil digabung, tampil penulisan terbaru
+    ]);
+  });
+  it("keterangan berbeda = pill berbeda; nominal berbeda = pill berbeda", () => {
+    const rows = [
+      e("jajan", 15000, "2026-10-01", "es krim"), e("jajan", 15000, "2026-10-02", "es krim"),
+      e("jajan", 15000, "2026-10-03"), e("jajan", 15000, "2026-10-04"),
+      e("jajan", 20000, "2026-10-05"), e("jajan", 20000, "2026-10-06"),
+    ];
+    expect(frequentExpenses(rows).map((x) => `${x.amount}:${x.note ?? "-"}`).sort()).toEqual(["15000:-", "15000:es krim", "20000:-"]);
+  });
+  it("urut paling sering lalu paling baru, dibatasi limit", () => {
+    const rows = [
+      ...[1, 2, 3].map((d) => e("a", 1000, `2026-10-0${d}`)),
+      ...[4, 5].map((d) => e("b", 2000, `2026-10-0${d}`)),
+      ...[6, 7].map((d) => e("c", 3000, `2026-10-0${d}`)),
+    ];
+    expect(frequentExpenses(rows).map((x) => x.categoryId)).toEqual(["a", "c", "b"]); // a:3, lalu c lebih baru dari b
+    expect(frequentExpenses(rows, { limit: 2 }).map((x) => x.categoryId)).toEqual(["a", "c"]);
+  });
+  it("hanya kategori yang diizinkan; nominal tidak valid diabaikan; minCount bisa diatur", () => {
+    const rows = [e("tagihan", 450000, "2026-10-01"), e("tagihan", 450000, "2026-10-02"), e("jajan", 0, "2026-10-01"), e("jajan", 0, "2026-10-02")];
+    expect(frequentExpenses(rows, { categories: new Set(["jajan"]) })).toEqual([]);
+    expect(frequentExpenses(rows, { minCount: 3 })).toEqual([]);
+    expect(frequentExpenses(rows).map((x) => x.categoryId)).toEqual(["tagihan"]);
   });
 });

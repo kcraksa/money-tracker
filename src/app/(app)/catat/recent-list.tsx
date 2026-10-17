@@ -7,7 +7,9 @@ import { CategoryIcon } from "@/components/category-icon";
 import { X } from "@/components/icons";
 import { rupiah } from "@/lib/format";
 
-type Row = { id: string; amount: number; spentOn: string; who: string; mine: boolean; category: string; icon: string };
+type Row = {
+  id: string; amount: number; spentOn: string; who: string; mine: boolean; category: string; icon: string; note: string | null;
+};
 
 export function RecentList({ rows, today }: { rows: Row[]; today: string }) {
   const router = useRouter();
@@ -23,6 +25,7 @@ export function RecentList({ rows, today }: { rows: Row[]; today: string }) {
             <CategoryIcon icon={r.icon} size="sm" />
             <div className="min-w-0 flex-1">
               <div className="truncate font-semibold">{r.category}</div>
+              {r.note && <div className="truncate text-xs text-fg/80">{r.note}</div>}
               <div className="flex items-center gap-1.5 text-xs text-muted">
                 <span className="flex h-4 w-4 items-center justify-center rounded-full bg-surface-2 text-[9px] font-bold uppercase" aria-hidden>
                   {r.who.slice(0, 1)}
