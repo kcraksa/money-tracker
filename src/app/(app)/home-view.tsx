@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { AlertTriangle, Check, ChevronRight, Flame, KeyIcon, Plus, Settings, Sparkles, Wallet } from "@/components/icons";
+import { AlertTriangle, Check, ChevronRight, Flame, KeyIcon, LayoutGrid, Plus, Settings, Sparkles, Wallet } from "@/components/icons";
 import { CategoryIcon } from "@/components/category-icon";
 import { PageHeader } from "@/components/page-header";
 import { ProgressBar } from "@/components/progress-bar";
@@ -48,6 +48,10 @@ export function HomeView(p: HomeProps) {
         subtitle={p.greeting}
         actions={
           <>
+            <Link href="/menu" transitionTypes={["nav-back"]} aria-label="Menu utama"
+              className="flex h-10 w-10 items-center justify-center rounded-full border border-border bg-surface text-muted shadow-card">
+              <LayoutGrid className="h-[18px] w-[18px]" />
+            </Link>
             <ThemeToggle />
             <Link href="/pengaturan" transitionTypes={["nav-forward"]} aria-label="Pengaturan"
               className="flex h-10 w-10 items-center justify-center rounded-full border border-border bg-surface text-muted shadow-card">

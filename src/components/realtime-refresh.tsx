@@ -4,7 +4,7 @@ import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 
-const TABLES = ["expense", "xp_event", "item", "shopping_list_item", "bill_payment"];
+const TABLES = ["expense", "xp_event", "item", "shopping_list_item", "bill_payment", "vehicle", "service_visit"];
 
 /** Catatan pasangan muncul di layar kita tanpa reload. */
 export function RealtimeRefresh({ householdId }: { householdId: string }) {

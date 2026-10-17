@@ -7,6 +7,8 @@ import {
 import { learnOrder, sortByRoute } from "./route";
 import { agoLabel, needsStockCheck, planStockCheck } from "./stock-check";
 import { frequentExpenses } from "./frequent";
+import { byUrgency, checkKm, dueText, kmNudge, kmPerDay, partStatus, summarize, type PartStatus } from "./service/logic";
+import { TEMPLATES } from "./service/templates";
 import { forecast } from "./forecast";
 import { BADGES, computeStreak, levelInfo, questProgress, savingPoints } from "./gamification";
 import { evaluate, recommend, suggestMonthlyNeed } from "./shopping";
@@ -324,5 +326,113 @@ describe("pengeluaran yang sering dicatat", () => {
     expect(frequentExpenses(rows, { categories: new Set(["jajan"]) })).toEqual([]);
     expect(frequentExpenses(rows, { minCount: 3 })).toEqual([]);
     expect(frequentExpenses(rows).map((x) => x.categoryId)).toEqual(["tagihan"]);
+  });
+});
+
+describe("service record: status part", () => {
+  const ctx = (over: Partial<{ currentKm: number; today: string; kmPerDay: number | null }> = {}) => ({
+    currentKm: 45000, today: "2026-10-17", kmPerDay: null, ...over,
+  });
+  const busi = { intervalKm: 10000, intervalMonths: null, lastKm: 40000, lastOn: "2026-04-01" };
+
+  it("aman, segera, terlewat berdasarkan sisa km", () => {
+    expect(partStatus(busi, ctx()).status).toBe("ok"); // sisa 5000
+    const s = partStatus(busi, ctx({ currentKm: 48600 })); // sisa 1400 <= 15% x 10000
+    expect(s).toMatchObject({ status: "soon", remainingKm: 1400, dueKm: 50000 });
+    expect(partStatus(busi, ctx({ currentKm: 50300 }))).toMatchObject({ status: "overdue", remainingKm: -300 });
+    expect(partStatus(busi, ctx({ currentKm: 50000 })).status).toBe("overdue"); // tepat di batas
+  });
+  it("batas 'segera' minimal 200 km untuk interval kecil", () => {
+    const oli = { intervalKm: 1000, intervalMonths: null, lastKm: 0, lastOn: "2026-10-01" };
+    expect(partStatus(oli, ctx({ currentKm: 750 })).status).toBe("ok"); // sisa 250 > max(200, 150)
+    expect(partStatus(oli, ctx({ currentKm: 810 })).status).toBe("soon"); // sisa 190
+  });
+  it("oli motor 3000 km vs oli mobil 7000 km: interval berbeda per kendaraan", () => {
+    const motor = { intervalKm: 3000, intervalMonths: null, lastKm: 20000, lastOn: "2026-09-01" };
+    const mobil = { intervalKm: 7000, intervalMonths: null, lastKm: 20000, lastOn: "2026-09-01" };
+    expect(partStatus(motor, ctx({ currentKm: 22700 })).status).toBe("soon"); // sisa 300 <= 450
+    expect(partStatus(mobil, ctx({ currentKm: 22700 })).status).toBe("ok"); // sisa 4300
+  });
+  it("interval waktu: oli tiap 6 bulan walau km belum tercapai", () => {
+    const oli = { intervalKm: 7000, intervalMonths: 6, lastKm: 44000, lastOn: "2026-04-10" };
+    const s = partStatus(oli, ctx());
+    expect(s.dueOn).toBe("2026-10-10");
+    expect(s).toMatchObject({ status: "overdue", remainingDays: -7, driver: "waktu" }); // 1000 km saja, tapi 6 bulan lewat
+    expect(partStatus(oli, ctx({ today: "2026-09-30" })).status).toBe("soon"); // 10 hari lagi
+    expect(partStatus({ ...oli, lastOn: "2026-08-01" }, ctx()).status).toBe("ok");
+  });
+  it("part berbasis waktu saja (aki) dan km saja", () => {
+    const aki = { intervalKm: null, intervalMonths: 24, lastKm: 10000, lastOn: "2024-11-01" };
+    expect(partStatus(aki, ctx())).toMatchObject({ status: "ok", remainingDays: 15, dueOn: "2026-11-01" }); // 15 hari: belum "segera"
+    expect(partStatus(aki, ctx({ today: "2026-10-20" }))).toMatchObject({ status: "soon", remainingKm: null, remainingDays: 12 });
+    expect(partStatus(aki, ctx({ today: "2026-12-01" })).status).toBe("overdue");
+  });
+  it("perkiraan hari dari laju pemakaian membuat alert datang lebih awal", () => {
+    const s = partStatus(busi, ctx({ currentKm: 46500, kmPerDay: 200 })); // sisa 3500 -> 18 hari
+    expect(s).toMatchObject({ status: "ok", etaDays: 18 });
+    const dekat = partStatus(busi, ctx({ currentKm: 47500, kmPerDay: 200 })); // sisa 2500 -> 13 hari (<=14)
+    expect(dekat).toMatchObject({ status: "soon", etaDays: 13 });
+    expect(partStatus(busi, ctx({ currentKm: 50100, kmPerDay: 200 })).etaDays).toBe(0);
+  });
+  it("tanpa riwayat servis: unknown; km mundur tidak menghasilkan progres negatif", () => {
+    expect(partStatus({ ...busi, lastKm: null, lastOn: null }, ctx()).status).toBe("unknown");
+    expect(partStatus(busi, ctx({ currentKm: 39000 })).usedPct).toBe(0);
+  });
+  it("progres memakai dimensi terparah", () => {
+    const s = partStatus({ intervalKm: 10000, intervalMonths: 12, lastKm: 40000, lastOn: "2026-04-17" }, ctx());
+    expect(s.usedPct).toBeCloseTo(0.5, 1); // km 50%, waktu ~50%
+    expect(partStatus({ intervalKm: 10000, intervalMonths: 12, lastKm: 44000, lastOn: "2026-04-17" }, ctx()).driver).toBe("waktu");
+  });
+});
+
+describe("service record: laju, pengingat, ringkasan, validasi", () => {
+  it("laju km/hari dari catatan 60 hari terakhir", () => {
+    const r = [{ km: 44000, read_on: "2026-09-17" }, { km: 44600, read_on: "2026-10-07" }, { km: 45000, read_on: "2026-10-17" }];
+    expect(kmPerDay(r, "2026-10-17")).toBeCloseTo(1000 / 30, 5);
+    expect(kmPerDay([{ km: 100, read_on: "2026-10-17" }], "2026-10-17")).toBeNull();
+    expect(kmPerDay([{ km: 100, read_on: "2026-10-16" }, { km: 120, read_on: "2026-10-17" }], "2026-10-17")).toBeNull(); // < 3 hari
+    expect(kmPerDay([{ km: 500, read_on: "2026-10-01" }, { km: 400, read_on: "2026-10-17" }], "2026-10-17")).toBeNull(); // turun
+    expect(kmPerDay([{ km: 100, read_on: "2026-05-01" }, { km: 900, read_on: "2026-10-17" }], "2026-10-17")).toBeNull(); // di luar jendela
+  });
+  it("pengingat update km mengikuti frekuensi per kendaraan", () => {
+    expect(kmNudge("2026-10-10", 7, "2026-10-17")).toEqual({ daysAgo: 7, due: true });
+    expect(kmNudge("2026-10-14", 7, "2026-10-17")).toEqual({ daysAgo: 3, due: false });
+    expect(kmNudge("2026-10-17", 1, "2026-10-17")).toEqual({ daysAgo: 0, due: false });
+  });
+  it("ringkasan & urutan paling mendesak", () => {
+    expect(summarize(["ok", "soon", "ok"]).worst).toBe("soon");
+    expect(summarize(["ok", "overdue", "soon", "unknown"])).toEqual({ worst: "overdue", overdue: 1, soon: 1, unknown: 1, total: 4 });
+    expect(summarize([]).worst).toBe("ok");
+    const mk = (status: "ok" | "soon" | "overdue", usedPct: number) => ({ status: { status, usedPct } as unknown as PartStatus });
+    const sorted = byUrgency([mk("ok", 0.9), mk("overdue", 1.2), mk("soon", 0.85), mk("overdue", 1.5)]);
+    expect(sorted.map((x) => [x.status.status, x.status.usedPct])).toEqual([["overdue", 1.5], ["overdue", 1.2], ["soon", 0.85], ["ok", 0.9]]);
+  });
+  it("validasi km: tolak mustahil, konfirmasi turun/lonjakan", () => {
+    expect(checkKm(45200, 45000)).toEqual({ level: "ok" });
+    expect(checkKm(45000, 45000)).toEqual({ level: "ok" });
+    expect(checkKm(-1, 45000).level).toBe("invalid");
+    expect(checkKm(12.5, 45000).level).toBe("invalid");
+    expect(checkKm(99_999_999, 45000).level).toBe("invalid");
+    expect(checkKm(44000, 45000).level).toBe("confirm");
+    expect(checkKm(48500, 45000).level).toBe("confirm");
+    expect(checkKm(48000, 45000).level).toBe("ok"); // tepat 3000, belum perlu konfirmasi
+  });
+  it("teks jatuh tempo ringkas", () => {
+    const base = { dueKm: null, dueOn: null, etaDays: null, usedPct: 0 };
+    expect(dueText({ ...base, status: "ok", remainingKm: 1200, remainingDays: null, driver: "km" })).toBe("1.200 km lagi");
+    expect(dueText({ ...base, status: "overdue", remainingKm: -350, remainingDays: null, driver: "km" })).toBe("terlewat 350 km");
+    expect(dueText({ ...base, status: "soon", remainingKm: 4000, remainingDays: 9, driver: "waktu" })).toBe("4.000 km lagi · 9 hari lagi");
+    expect(dueText({ ...base, status: "unknown", remainingKm: null, remainingDays: null, driver: null })).toBe("Belum ada riwayat");
+  });
+  it("template: interval contoh pengguna (oli motor 3rb, oli mobil 7rb, busi 10rb) & tiap part punya interval", () => {
+    const find = (k: "car" | "motorcycle", n: string) => TEMPLATES[k].find((p) => p.name === n)!;
+    expect(find("motorcycle", "Oli mesin").intervalKm).toBe(3000);
+    expect(find("car", "Oli mesin").intervalKm).toBe(7000);
+    expect(find("motorcycle", "Busi").intervalKm).toBe(10000);
+    expect(find("car", "Busi").intervalKm).toBe(10000);
+    for (const k of ["car", "motorcycle"] as const) {
+      for (const p of TEMPLATES[k]) expect(p.intervalKm || p.intervalMonths).toBeTruthy();
+      expect(new Set(TEMPLATES[k].map((p) => p.name)).size).toBe(TEMPLATES[k].length);
+    }
   });
 });

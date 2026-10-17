@@ -26,7 +26,7 @@ beforeAll(async () => {
     grant usage on schema public to authenticated;
     insert into auth.users values ('${A}'), ('${B}'), ('${C}');
   `);
-  for (const f of ["0001_init.sql", "0002_period_income_store.sql", "0003_stock_check.sql"]) {
+  for (const f of ["0001_init.sql", "0002_period_income_store.sql", "0003_stock_check.sql", "0004_service_record.sql"]) {
     await db.exec(readFileSync(`supabase/migrations/${f}`, "utf8"));
   }
   await db.exec(`
@@ -228,5 +228,76 @@ describe("skema & RLS", () => {
     await db.exec("reset role");
     await db.exec(readFileSync("supabase/migrations/0003_stock_check.sql", "utf8"));
     await db.exec(readFileSync("supabase/migrations/0003_stock_check.sql", "utf8"));
+  });
+
+  describe("service record", () => {
+    let vehicle = "";
+    const parts: Record<string, string> = {};
+
+    it("kendaraan & part: terisolasi per rumah tangga, part wajib punya interval", async () => {
+      await as(A);
+      const h = (await db.query<{ id: string }>("select id from household")).rows[0].id;
+      vehicle = (await db.query<{ id: string }>(
+        "insert into vehicle (household_id, name, kind, odometer_km, odometer_on) values ($1,'Avanza','car',45000,'2026-10-01') returning id", [h],
+      )).rows[0].id;
+      for (const [name, km, months] of [["Oli mesin", 7000, 6], ["Busi", 10000, null], ["Aki", null, 24]] as const) {
+        parts[name] = (await db.query<{ id: string }>(
+          "insert into service_part (household_id, vehicle_id, name, interval_km, interval_months) values ($1,$2,$3,$4,$5) returning id",
+          [h, vehicle, name, km, months],
+        )).rows[0].id;
+      }
+      await expect(
+        db.query("insert into service_part (household_id, vehicle_id, name) values ($1,$2,'Tanpa interval')", [h, vehicle]),
+      ).rejects.toThrow(/check/);
+      await as(C);
+      expect((await db.query("select * from vehicle")).rows).toHaveLength(0);
+      expect((await db.query("select * from service_part")).rows).toHaveLength(0);
+    });
+
+    it("record_odometer: memperbarui km dan menyimpan riwayat", async () => {
+      await as(B); // pasangan juga bisa memperbarui
+      await db.query("select record_odometer($1, 45600, '2026-10-10')", [vehicle]);
+      const v = (await db.query<{ odometer_km: number; odometer_on: string }>("select odometer_km, odometer_on::text from vehicle where id = $1", [vehicle])).rows[0];
+      expect(v.odometer_km).toBe(45600);
+      expect(v.odometer_on).toBe("2026-10-10");
+      const r = await db.query<{ source: string }>("select source from odometer_reading where vehicle_id = $1", [vehicle]);
+      expect(r.rows.map((x) => x.source)).toEqual(["manual"]);
+      await expect(db.query("select record_odometer($1, -5, '2026-10-10')", [vehicle])).rejects.toThrow(/tidak valid/);
+    });
+
+    it("record_service: kunjungan + part + km naik; servis lampau tidak menurunkan km", async () => {
+      await as(A);
+      const id = (await db.query<{ record_service: string }>(
+        "select record_service($1, '2026-10-12', 45800, ' Bengkel Jaya ', 350000, null, $2::uuid[])",
+        [vehicle, [parts["Oli mesin"], parts["Busi"]]],
+      )).rows[0].record_service;
+      const vp = await db.query("select * from service_visit_part where visit_id = $1", [id]);
+      expect(vp.rows).toHaveLength(2);
+      const visit = (await db.query<{ workshop: string; cost: string }>("select workshop, cost from service_visit where id = $1", [id])).rows[0];
+      expect(visit.workshop).toBe("Bengkel Jaya");
+      expect(Number(visit.cost)).toBe(350000);
+      expect((await db.query<{ odometer_km: number }>("select odometer_km from vehicle where id = $1", [vehicle])).rows[0].odometer_km).toBe(45800);
+
+      await db.query("select record_service($1, '2026-06-01', 40000, null, 0, 'servis lama', $2::uuid[])", [vehicle, [parts["Aki"]]]);
+      expect((await db.query<{ odometer_km: number }>("select odometer_km from vehicle where id = $1", [vehicle])).rows[0].odometer_km).toBe(45800);
+    });
+
+    it("record_service menolak tanpa part, part kendaraan lain, dan dari rumah tangga lain", async () => {
+      await as(A);
+      await expect(db.query("select record_service($1, '2026-10-12', 46000, null, 0, null, $2::uuid[])", [vehicle, []])).rejects.toThrow(/minimal satu part/);
+      await expect(
+        db.query("select record_service($1, '2026-10-12', 46000, null, 0, null, $2::uuid[])", [vehicle, ["00000000-0000-0000-0000-0000000000ff"]]),
+      ).rejects.toThrow(/tidak sesuai/);
+      await as(C);
+      await expect(db.query("select record_odometer($1, 99999, '2026-10-12')", [vehicle])).rejects.toThrow(/tidak ditemukan/);
+    });
+
+    it("menghapus kendaraan ikut menghapus part, km, dan riwayat servis", async () => {
+      await as(A);
+      await db.query("delete from vehicle where id = $1", [vehicle]);
+      for (const t of ["service_part", "service_visit", "service_visit_part", "odometer_reading"]) {
+        expect((await db.query(`select * from ${t}`)).rows).toHaveLength(0);
+      }
+    });
   });
 });
