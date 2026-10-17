@@ -1,10 +1,12 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState, useTransition } from "react";
 import { logExpense, undoExpense } from "@/app/actions/expense";
-import { Check, ChevronDown, Delete, StickyNote, Undo2, WifiOff, Zap } from "@/components/icons";
+import { AlertTriangle, Check, ChevronDown, Delete, StickyNote, Undo2, WifiOff, Zap } from "@/components/icons";
 import { PageHeader } from "@/components/page-header";
 import { Segmented } from "@/components/segmented";
+import { Spinner } from "@/components/spinner";
 import { haptic } from "@/lib/haptics";
 import { addDays } from "@/lib/date";
 import { rupiah } from "@/lib/format";
@@ -17,10 +19,12 @@ type Quick = {
   pinned: boolean; // true = tombol cepat tetap dari Pengaturan
 };
 type Pending = { id: string; categoryId: string; amount: number; spentOn?: string; note?: string };
-type Toast = { text: string; undoId?: string; tone: "ok" | "warn" };
+type ToastState = "saving" | "saved" | "queued" | "error";
+type Toast = { id?: string; state: ToastState; text: string };
 
 const QUEUE_KEY = "mt-queue";
 const MAX_DIGITS = 9;
+const QUICK_DEBOUNCE_MS = 700;
 
 function readQueue(): Pending[] {
   try { return JSON.parse(getLocal(QUEUE_KEY) || "[]"); } catch { return []; }
@@ -29,9 +33,17 @@ function writeQueue(q: Pending[]) {
   setLocal(QUEUE_KEY, JSON.stringify(q));
 }
 
-export function CatatForm({
-  categories, quicks, today,
-}: { categories: Category[]; quicks: Quick[]; today: string }) {
+type Props = {
+  categories: Category[];
+  quicks: Quick[];
+  today: string;
+  /** Bisa diganti (mis. untuk pengujian); bawaannya Server Action asli. */
+  logFn?: typeof logExpense;
+  undoFn?: typeof undoExpense;
+};
+
+export function CatatForm({ categories, quicks, today, logFn = logExpense, undoFn = undoExpense }: Props) {
+  const router = useRouter();
   const [digits, setDigits] = useState("");
   const [picked, setPicked] = useState<string>("");
   const queueRaw = useLocal(QUEUE_KEY);
@@ -42,24 +54,32 @@ export function CatatForm({
   const [yesterday, setYesterday] = useState(false);
   const [note, setNote] = useState("");
   const [toast, setToast] = useState<Toast | null>(null);
-  const [pending, start] = useTransition();
+  const [, startRefresh] = useTransition();
   const toastTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
+  const toastId = useRef<string | null>(null);
+  // Simpanan yang sedang dikirim; cancelled = pengguna menekan Urungkan sebelum server menjawab.
+  const inflight = useRef(new Map<string, { cancelled: boolean }>());
+  const lastQuick = useRef({ id: "", at: 0 });
 
   const amount = Number(digits || 0);
   const selected = categories.find((c) => c.id === categoryId);
 
   const show = useCallback((t: Toast) => {
     clearTimeout(toastTimer.current);
+    toastId.current = t.id ?? null;
     setToast(t);
     toastTimer.current = setTimeout(() => setToast(null), 6000);
   }, []);
+
+  // Segarkan daftar "catatan terakhir" & pills di latar belakang (tidak memblokir apa pun).
+  const refresh = useCallback(() => startRefresh(() => router.refresh()), [router]);
 
   // Kirim antrean offline begitu ada sinyal.
   const flush = useCallback(async () => {
     let queue = readQueue();
     while (queue.length > 0) {
       try {
-        const r = await logExpense(queue[0]);
+        const r = await logFn(queue[0]);
         if (!r.ok && r.error === "Gagal menyimpan, coba lagi.") break; // coba lagi nanti
       } catch {
         break; // masih offline
@@ -67,7 +87,7 @@ export function CatatForm({
       queue = queue.slice(1);
       writeQueue(queue);
     }
-  }, []);
+  }, [logFn]);
 
   useEffect(() => {
     flush();
@@ -84,22 +104,43 @@ export function CatatForm({
     });
   }
 
+  /**
+   * Optimistik: kabar "tersimpan" langsung tampil dan formulir siap dipakai lagi, sementara
+   * pengiriman ke server berjalan di latar belakang. Gagal jaringan -> masuk antrean offline.
+   */
   function save(p: Pending, label: string) {
-    start(async () => {
+    const summary = `${label} ${rupiah(p.amount)}`;
+    inflight.current.set(p.id, { cancelled: false });
+    show({ id: p.id, state: "saving", text: summary });
+
+    void (async () => {
       try {
-        const r = await logExpense(p);
-        if (!r.ok) { haptic("warn"); return show({ text: r.error, tone: "warn" }); }
+        const r = await logFn(p);
+        const flight = inflight.current.get(p.id);
+        inflight.current.delete(p.id);
+        if (!r.ok) {
+          haptic("warn");
+          return show({ id: p.id, state: "error", text: r.error });
+        }
+        if (flight?.cancelled) { // diurungkan selagi dikirim: hapus begitu tersimpan
+          await undoFn(r.id).catch(() => {});
+          return refresh();
+        }
         haptic("success");
-        const bits = [`${label} ${rupiah(p.amount)}`];
+        const bits = [`${summary} tersimpan`];
         if (r.xp > 0) bits.push(`+${r.xp} XP`);
         if (r.streak > 1) bits.push(`${r.streak} hari beruntun`);
-        show({ text: bits.join(" · "), undoId: r.id, tone: "ok" });
+        if (toastId.current === p.id) show({ id: p.id, state: "saved", text: bits.join(" · ") });
+        refresh();
       } catch {
+        const flight = inflight.current.get(p.id);
+        inflight.current.delete(p.id);
+        if (flight?.cancelled) return;
         // Offline: simpan di HP, kirim saat ada sinyal.
         writeQueue([...readQueue(), p]);
-        show({ text: `Offline: ${label} ${rupiah(p.amount)} disimpan di HP`, undoId: p.id, tone: "warn" });
+        show({ id: p.id, state: "queued", text: `Offline: ${summary} disimpan di HP` });
       }
-    });
+    })();
   }
 
   function submit() {
@@ -119,19 +160,28 @@ export function CatatForm({
     setYesterday(false);
   }
 
-  function quick(q: Quick) {
+  function quick(q: Quick, at: number) {
+    // Cegah dobel-ketuk tidak sengaja pada pill yang sama (waktu dari event, bukan jam sistem).
+    if (lastQuick.current.id === q.id && at - lastQuick.current.at < QUICK_DEBOUNCE_MS) return;
+    lastQuick.current = { id: q.id, at };
     haptic("select");
     save({ id: crypto.randomUUID(), categoryId: q.categoryId, amount: q.amount, note: q.note ?? undefined }, q.label);
   }
 
-  function undo(id: string) {
+  function undo(t: Toast) {
+    const id = t.id;
+    clearTimeout(toastTimer.current);
+    toastId.current = null;
     setToast(null);
+    if (!id) return;
+    const flight = inflight.current.get(id);
+    if (flight) { flight.cancelled = true; return; } // masih dikirim: dibatalkan begitu terkirim
     const q = readQueue();
     if (q.some((p) => p.id === id)) {
       writeQueue(q.filter((p) => p.id !== id));
       return;
     }
-    start(async () => { await undoExpense(id); });
+    undoFn(id).then(refresh).catch(() => show({ state: "error", text: "Gagal mengurungkan, coba lagi." }));
   }
 
   return (
@@ -156,7 +206,7 @@ export function CatatForm({
           <div data-no-ptr className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1" role="group" aria-label="Pengeluaran yang sering dicatat">
             {quicks.map((q) => (
               <button
-                key={q.id} onClick={() => quick(q)} disabled={pending}
+                key={q.id} onClick={(e) => quick(q, e.timeStamp)}
                 className="flex min-h-11 shrink-0 items-center gap-2 whitespace-nowrap rounded-full border border-border bg-surface py-1.5 pl-2 pr-4 text-sm font-semibold shadow-card transition active:scale-95 disabled:opacity-50"
               >
                 <span className="flex h-8 w-8 items-center justify-center rounded-full bg-primary-soft text-base" aria-hidden>{q.icon}</span>
@@ -229,23 +279,34 @@ export function CatatForm({
         ))}
       </div>
 
-      <button className="btn-primary min-h-14 text-base" onClick={submit} disabled={!amount || !categoryId || pending}>
-        {pending ? "Menyimpan…" : !amount ? "Simpan" : !categoryId ? "Pilih kategori dulu" : `Simpan ${rupiah(amount)}`}
+      <button className="btn-primary min-h-14 text-base" onClick={submit} disabled={!amount || !categoryId}>
+        {!amount ? "Simpan" : !categoryId ? "Pilih kategori dulu" : `Simpan ${rupiah(amount)}`}
       </button>
 
       {toast && (
         <div
-          role="status"
+          role="status" aria-live="polite" aria-busy={toast.state === "saving"}
           className={`animate-pop fixed inset-x-4 bottom-28 z-30 mx-auto flex max-w-md items-center gap-3 rounded-2xl p-3.5 shadow-float ${
-            toast.tone === "ok" ? "bg-fg text-bg" : "bg-warn-bg text-warn"
+            toast.state === "error" ? "bg-danger-bg text-danger"
+              : toast.state === "queued" ? "bg-warn-bg text-warn"
+              : "bg-fg text-bg"
           }`}
         >
-          <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${toast.tone === "ok" ? "bg-ok text-bg" : "bg-warn/20"}`}>
-            {toast.tone === "ok" ? <Check className="h-4 w-4" aria-hidden /> : <WifiOff className="h-4 w-4" aria-hidden />}
+          <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${
+            toast.state === "saved" ? "bg-ok text-bg"
+              : toast.state === "saving" ? "bg-bg/15"
+              : toast.state === "error" ? "bg-danger/15" : "bg-warn/20"
+          }`}>
+            {toast.state === "saving" ? <Spinner className="h-4 w-4" />
+              : toast.state === "saved" ? <Check className="h-4 w-4" aria-hidden />
+              : toast.state === "error" ? <AlertTriangle className="h-4 w-4" aria-hidden />
+              : <WifiOff className="h-4 w-4" aria-hidden />}
           </span>
-          <span className="min-w-0 flex-1 text-sm font-medium">{toast.text}</span>
-          {toast.undoId && (
-            <button className="flex min-h-10 shrink-0 items-center gap-1 px-2 text-sm font-bold" onClick={() => undo(toast.undoId!)}>
+          <span className="min-w-0 flex-1 text-sm font-medium">
+            {toast.state === "saving" ? `Menyimpan ${toast.text}…` : toast.text}
+          </span>
+          {toast.id && toast.state !== "error" && (
+            <button className="flex min-h-10 shrink-0 items-center gap-1 px-2 text-sm font-bold" onClick={() => undo(toast)}>
               <Undo2 className="h-4 w-4" aria-hidden /> Urungkan
             </button>
           )}

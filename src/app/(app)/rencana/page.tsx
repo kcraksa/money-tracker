@@ -8,6 +8,7 @@ import { rupiah } from "@/lib/format";
 import { isOverdue, periodLabel, shortDate } from "@/lib/period";
 import { loadPeriodContext } from "@/lib/server/period";
 import { AllocationForm, type AllocCategory } from "./allocation-form";
+import { SubmitButton } from "@/components/submit-button";
 
 export const metadata = { title: "Rencana gajian" };
 
@@ -76,9 +77,9 @@ export default async function RencanaPage({
                 <span className="font-semibold tabular-nums">{rupiah(Number(r.amount))}</span>
                 <form action={deleteIncome}>
                   <input type="hidden" name="id" value={r.id} />
-                  <button aria-label={`Hapus ${r.label}`} className="flex h-10 w-10 items-center justify-center rounded-full text-muted hover:bg-surface-2">
+                  <SubmitButton iconOnly aria-label={`Hapus ${r.label}`} className="flex h-10 w-10 items-center justify-center rounded-full text-muted hover:bg-surface-2">
                     <Trash2 className="h-4 w-4" aria-hidden />
-                  </button>
+                  </SubmitButton>
                 </form>
               </li>
             ))}
@@ -98,9 +99,9 @@ export default async function RencanaPage({
               <span><b>Gajian baru</b> · mulai periode baru di tanggal ini</span>
             </label>
           )}
-          <button className="btn-primary col-span-2">
+          <SubmitButton pendingLabel="Menyimpan…" className="btn-primary col-span-2">
             <Plus className="h-4 w-4" aria-hidden /> {period.explicit ? "Tambah pemasukan" : "Catat gajian & mulai periode"}
-          </button>
+          </SubmitButton>
         </form>
         {!period.explicit && (
           <p className="text-xs text-muted">
@@ -127,7 +128,7 @@ export default async function RencanaPage({
               <span className="pill bg-surface-2 text-muted">{c.kind === "fixed" ? "Tagihan" : c.lump_sum ? "Sekali jalan" : "Harian"}</span>
               <form action={archiveCategory}>
                 <input type="hidden" name="id" value={c.id} />
-                <button className="min-h-10 px-2 text-xs font-semibold text-muted hover:text-danger" aria-label={`Arsipkan ${c.name}`}>Arsipkan</button>
+                <SubmitButton pendingLabel="…" className="min-h-10 px-2 text-xs font-semibold text-muted hover:text-danger" aria-label={`Arsipkan ${c.name}`}>Arsipkan</SubmitButton>
               </form>
             </li>
           ))}
@@ -143,7 +144,7 @@ export default async function RencanaPage({
             <input type="checkbox" name="lump_sum" className="h-5 w-5 accent-[var(--primary)]" />
             Dibayar sekali jalan (tidak diproyeksi per hari)
           </label>
-          <button className="btn-soft col-span-2"><Plus className="h-4 w-4" aria-hidden /> Tambah pos</button>
+          <SubmitButton pendingLabel="Menambah…" className="btn-soft col-span-2"><Plus className="h-4 w-4" aria-hidden /> Tambah pos</SubmitButton>
         </form>
       </section>
     </div>

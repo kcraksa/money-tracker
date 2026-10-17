@@ -49,7 +49,7 @@ export async function updateListItem(
   return { ok: !error };
 }
 
-export async function addExtra(form: FormData) {
+export async function addExtra(form: FormData): Promise<{ ok: boolean }> {
   const { supabase, householdId } = await getCtx();
   const listId = String(form.get("list_id"));
   const name = String(form.get("name") ?? "").trim();
@@ -63,7 +63,7 @@ export async function addExtra(form: FormData) {
     });
   }
   revalidatePath("/checklist", "layout");
-  redirect("/checklist");
+  return { ok: true };
 }
 
 export async function removeListItem(form: FormData) {
@@ -166,7 +166,7 @@ export async function setListStore(listId: string, storeId: string | null): Prom
 }
 
 /** Tambah toko baru (mis. "Hari-Hari") dan langsung dipakai di belanja ini. */
-export async function addStore(form: FormData) {
+export async function addStore(form: FormData): Promise<{ ok: boolean }> {
   const { supabase, householdId } = await getCtx();
   const listId = String(form.get("list_id") ?? "");
   const name = String(form.get("name") ?? "").trim().slice(0, 40);
@@ -177,5 +177,5 @@ export async function addStore(form: FormData) {
     if (storeId && listId) await supabase.from("shopping_list").update({ store_id: storeId }).eq("id", listId).eq("status", "open");
   }
   revalidatePath("/checklist", "layout");
-  redirect("/checklist");
+  return { ok: true };
 }

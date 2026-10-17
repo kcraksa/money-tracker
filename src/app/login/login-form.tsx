@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Mail } from "lucide-react";
 import { GoogleIcon } from "@/components/google-icon";
 import { Logo } from "@/components/logo";
+import { Spinner } from "@/components/spinner";
 import { createClient } from "@/lib/supabase/client";
 
 export function LoginForm({ initialError }: { initialError: string }) {
@@ -81,7 +82,7 @@ export function LoginForm({ initialError }: { initialError: string }) {
           onClick={google} disabled={busy}
           className="btn-soft min-h-14 text-base shadow-card"
         >
-          <GoogleIcon /> {busy && !sent ? "Mengalihkan…" : "Lanjutkan dengan Google"}
+          {busy && !sent ? <Spinner className="h-5 w-5" /> : <GoogleIcon />} {busy && !sent ? "Mengalihkan…" : "Lanjutkan dengan Google"}
         </button>
         <p className="text-center text-xs text-muted">
           Pakai akun Google yang sama di HP kamu dan pasangan. Tidak perlu password.
@@ -102,7 +103,7 @@ export function LoginForm({ initialError }: { initialError: string }) {
                 />
               </div>
               <button className="btn-primary" disabled={busy}>
-                <Mail className="h-[18px] w-[18px]" aria-hidden /> {busy ? "Mengirim…" : "Kirim link masuk"}
+                {busy ? <Spinner className="h-[18px] w-[18px]" /> : <Mail className="h-[18px] w-[18px]" aria-hidden />} {busy ? "Mengirim…" : "Kirim link masuk"}
               </button>
             </form>
           ) : (
@@ -116,7 +117,7 @@ export function LoginForm({ initialError }: { initialError: string }) {
                 value={code} onChange={(e) => setCode(e.target.value.replace(/\D/g, ""))}
               />
               <button className="btn-primary" disabled={busy || code.length < 6}>
-                {busy ? "Memeriksa…" : "Masuk"}
+                {busy && <Spinner />}{busy ? "Memeriksa…" : "Masuk"}
               </button>
               <button type="button" className="btn-ghost min-h-10 text-sm" onClick={() => setSent(false)}>
                 Ganti email

@@ -4,6 +4,7 @@ import { useState } from "react";
 import { saveAllocation } from "@/app/actions/plan";
 import { CategoryIcon } from "@/components/category-icon";
 import { rupiah } from "@/lib/format";
+import { SubmitButton } from "@/components/submit-button";
 
 export type AllocCategory = {
   id: string; name: string; icon: string; kind: "daily" | "fixed"; lump_sum: boolean;
@@ -85,7 +86,7 @@ export function AllocationForm({ categories, incomeTotal }: { categories: AllocC
       <p className="-mt-2 text-xs text-muted">
         Kolom &quot;Tgl&quot; = tanggal jatuh tempo tiap bulan (1–28). Alokasi ini berlaku sampai kamu mengubahnya di periode berikutnya.
       </p>
-      <button className="btn-primary">Simpan alokasi</button>
+      <SubmitButton pendingLabel="Menyimpan…" className="btn-primary">Simpan alokasi</SubmitButton>
     </form>
   );
 }

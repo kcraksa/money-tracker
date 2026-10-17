@@ -1,5 +1,6 @@
 import { archiveItem, saveItem } from "@/app/actions/stock";
 import type { Item } from "@/lib/types";
+import { SubmitButton } from "@/components/submit-button";
 
 /** Satuan & harga mengikuti rak (pcs, botol, kg…). Label bebas, tidak perlu kaku. */
 export function ItemForm({ item }: { item?: Item }) {
@@ -26,12 +27,12 @@ export function ItemForm({ item }: { item?: Item }) {
             <input name="stock" inputMode="decimal" className="input" defaultValue={0} />
           </div>
         )}
-        <button className="btn-primary col-span-2 mt-1">{item ? "Simpan perubahan" : "Tambah barang"}</button>
+        <SubmitButton pendingLabel="Menyimpan…" className="btn-primary col-span-2 mt-1">{item ? "Simpan perubahan" : "Tambah barang"}</SubmitButton>
       </form>
       {item && (
         <form action={archiveItem}>
           <input type="hidden" name="id" value={item.id} />
-          <button className="min-h-10 w-full text-sm text-danger">Hapus dari daftar</button>
+          <SubmitButton pendingLabel="Menghapus…" className="min-h-10 w-full text-sm text-danger">Hapus dari daftar</SubmitButton>
         </form>
       )}
     </div>

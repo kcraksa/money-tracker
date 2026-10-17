@@ -1,5 +1,7 @@
 "use client";
 
+import { SubmitButton } from "@/components/submit-button";
+import { Spinner } from "@/components/spinner";
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { addExtra, addStore, finishList, refreshList, removeListItem, setListStore, updateListItem } from "@/app/actions/shopping";
 import { Check, Minus, Plus, RefreshCw, Route, Store, WifiOff, X } from "@/components/icons";
@@ -37,9 +39,11 @@ export function ShoppingChecklist({ listId, periodLabel, initialItems, stores, s
   const queue = useRef(new Map<string, Patch>());
   const [unsynced, setUnsynced] = useState(0);
   const flushing = useRef(false);
+  const [syncing, setSyncing] = useState(false);
   const flush = useCallback(async () => {
     if (flushing.current) return;
     flushing.current = true;
+    setSyncing(true);
     try {
       for (const [id, patch] of [...queue.current]) {
         try {
@@ -53,6 +57,7 @@ export function ShoppingChecklist({ listId, periodLabel, initialItems, stores, s
       }
     } finally {
       flushing.current = false;
+      setSyncing(false);
     }
   }, []);
   const save = useCallback((id: string, patch: Patch) => {
@@ -122,7 +127,8 @@ export function ShoppingChecklist({ listId, periodLabel, initialItems, stores, s
         actions={
           unsynced > 0 ? (
             <span className="pill bg-warn-bg text-warn" role="status">
-              <WifiOff className="h-3.5 w-3.5" aria-hidden /> {unsynced} menunggu sinyal
+              {syncing ? <Spinner className="h-3.5 w-3.5" /> : <WifiOff className="h-3.5 w-3.5" aria-hidden />}
+              {syncing ? `Menyimpan ${unsynced} perubahan…` : `${unsynced} menunggu sinyal`}
             </span>
           ) : undefined
         }
@@ -197,9 +203,9 @@ export function ShoppingChecklist({ listId, periodLabel, initialItems, stores, s
 
       <div className="grid grid-cols-[auto_1fr] gap-2">
         <form action={refreshList}>
-          <button className="btn-soft h-full px-4" aria-label="Segarkan rekomendasi dari stok" title="Segarkan dari stok">
+          <SubmitButton iconOnly className="btn-soft h-full px-4" aria-label="Segarkan rekomendasi dari stok" title="Segarkan dari stok">
             <RefreshCw className="h-[18px] w-[18px]" aria-hidden />
-          </button>
+          </SubmitButton>
         </form>
         <button className="btn-primary" disabled={actual === 0} onClick={() => { haptic("select"); setShowFinish(true); }}>
           <Check className="h-[18px] w-[18px]" aria-hidden /> Selesai belanja
@@ -207,25 +213,25 @@ export function ShoppingChecklist({ listId, periodLabel, initialItems, stores, s
       </div>
 
       <Sheet open={showStore} onClose={() => setShowStore(false)} title="Tambah toko">
-        <form action={addStore} onSubmit={() => setShowStore(false)} className="flex flex-col gap-3 pb-2">
+        <form action={async (fd) => { await addStore(fd); setShowStore(false); }} className="flex flex-col gap-3 pb-2">
           <input type="hidden" name="list_id" value={listId} />
           <input
             name="name" required maxLength={40} autoFocus className="input" aria-label="Nama toko"
             placeholder="Nama toko, mis. Hari-Hari" enterKeyHint="done"
           />
           <p className="text-xs text-muted">Urutan rak toko ini akan dipelajari dari urutan kamu mencentang barang.</p>
-          <button className="btn-primary">Tambah & pakai toko ini</button>
+          <SubmitButton pendingLabel="Menambah…" className="btn-primary">Tambah & pakai toko ini</SubmitButton>
         </form>
       </Sheet>
 
       <Sheet open={showExtra} onClose={() => setShowExtra(false)} title="Barang di luar daftar">
-        <form action={addExtra} onSubmit={() => setShowExtra(false)} className="grid grid-cols-6 gap-2 pb-2">
+        <form action={async (fd) => { await addExtra(fd); setShowExtra(false); }} className="grid grid-cols-6 gap-2 pb-2">
           <input type="hidden" name="list_id" value={listId} />
           <input name="name" required autoFocus className="input col-span-6" placeholder="Nama barang" aria-label="Nama barang" enterKeyHint="next" />
           <input name="qty" inputMode="decimal" className="input col-span-2" placeholder="Jml" defaultValue="1" aria-label="Jumlah" />
           <input name="unit" className="input col-span-2" placeholder="pcs" aria-label="Satuan" />
           <input name="price" inputMode="numeric" className="input col-span-2" placeholder="Harga" aria-label="Harga per satuan" enterKeyHint="done" />
-          <button className="btn-primary col-span-6">Tambah ke keranjang</button>
+          <SubmitButton pendingLabel="Menambah…" className="btn-primary col-span-6">Tambah ke keranjang</SubmitButton>
         </form>
       </Sheet>
 
@@ -244,7 +250,7 @@ export function ShoppingChecklist({ listId, periodLabel, initialItems, stores, s
           <p className="text-sm text-muted">Stok bertambah sesuai yang dibeli dan {rupiah(actual)} dicatat sebagai pengeluaran.</p>
           <form action={finishList} className="flex flex-col gap-2">
             <input type="hidden" name="list_id" value={listId} />
-            <button className="btn-primary min-h-14 text-base"><Check className="h-5 w-5" aria-hidden /> Ya, selesai &amp; catat</button>
+            <SubmitButton pendingLabel="Mencatat…" className="btn-primary min-h-14 text-base"><Check className="h-5 w-5" aria-hidden /> Ya, selesai &amp; catat</SubmitButton>
             <button type="button" className="btn-ghost" onClick={() => setShowFinish(false)}>Lanjut belanja</button>
           </form>
         </div>
@@ -317,9 +323,9 @@ function Row({
         {item.is_extra && (
           <form action={removeListItem}>
             <input type="hidden" name="id" value={item.id} />
-            <button aria-label={`Hapus ${item.name}`} className="flex h-9 w-9 items-center justify-center rounded-full text-muted">
+            <SubmitButton iconOnly aria-label={`Hapus ${item.name}`} className="flex h-9 w-9 items-center justify-center rounded-full text-muted">
               <X className="h-4 w-4" aria-hidden />
-            </button>
+            </SubmitButton>
           </form>
         )}
       </div>

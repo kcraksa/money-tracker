@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { applyStockCheck } from "@/app/actions/stock";
 import { ClipboardCheck, Minus, Plus } from "@/components/icons";
+import { Spinner } from "@/components/spinner";
 import { qty } from "@/lib/format";
 import { haptic } from "@/lib/haptics";
 
@@ -105,7 +106,7 @@ export function StockCheck({ items }: { items: Item[] }) {
           <div className="text-xs text-muted">{items.length} barang dicek</div>
         </div>
         <button className="btn-primary shrink-0" onClick={submit} disabled={pending}>
-          <ClipboardCheck className="h-[18px] w-[18px]" aria-hidden /> {pending ? "Menyimpan…" : "Selesai cek"}
+          {pending ? <Spinner className="h-[18px] w-[18px]" /> : <ClipboardCheck className="h-[18px] w-[18px]" aria-hidden />} {pending ? "Menyimpan…" : "Selesai cek"}
         </button>
       </div>
     </div>

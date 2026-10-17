@@ -5,6 +5,7 @@ import { markBillPaid, unmarkBill } from "@/app/actions/bills";
 import { CategoryIcon } from "@/components/category-icon";
 import { Check } from "@/components/icons";
 import { Sheet } from "@/components/sheet";
+import { Spinner } from "@/components/spinner";
 import { rupiah } from "@/lib/format";
 import { haptic } from "@/lib/haptics";
 
@@ -50,7 +51,7 @@ export function BillRow({ categoryId, name, icon, amount, dueLabel, paid }: Prop
           className={`pill min-h-9 px-3 transition active:scale-95 ${paid.onTime ? "bg-ok-bg text-ok" : "bg-warn-bg text-warn"}`}
           aria-label={`${name} sudah lunas, ketuk untuk membatalkan`}
         >
-          <Check className="h-3.5 w-3.5" aria-hidden /> Lunas{paid.onTime ? "" : " · telat"}
+          {pending ? <Spinner className="h-3.5 w-3.5" /> : <Check className="h-3.5 w-3.5" aria-hidden />} Lunas{paid.onTime ? "" : " · telat"}
         </button>
       ) : (
         <button className="btn-soft min-h-9 px-3 text-sm" onClick={() => { haptic("tap"); setOpen(true); }}>
@@ -75,7 +76,7 @@ export function BillRow({ categoryId, name, icon, amount, dueLabel, paid }: Prop
           </div>
           {error && <p role="alert" className="rounded-2xl bg-danger-bg p-3 text-sm text-danger">{error}</p>}
           <button className="btn-primary min-h-14 text-base" disabled={pending || !value}>
-            {pending ? "Menyimpan…" : `Tandai lunas ${value ? rupiah(Number(value)) : ""}`}
+            {pending ? <><Spinner /> Menyimpan…</> : `Tandai lunas ${value ? rupiah(Number(value)) : ""}`}
           </button>
         </form>
       </Sheet>

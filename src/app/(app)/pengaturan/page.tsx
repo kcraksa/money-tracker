@@ -7,6 +7,7 @@ import { PageHeader } from "@/components/page-header";
 import { getCtx } from "@/lib/ctx";
 import { rupiah } from "@/lib/format";
 import type { Category } from "@/lib/types";
+import { SubmitButton } from "@/components/submit-button";
 
 export const metadata = { title: "Pengaturan" };
 
@@ -76,9 +77,9 @@ export default async function PengaturanPage({
                 <span className="font-semibold tabular-nums">{rupiah(Number(q.amount))}</span>
                 <form action={deleteQuick}>
                   <input type="hidden" name="id" value={q.id} />
-                  <button aria-label={`Hapus ${q.label}`} className="flex h-10 w-10 items-center justify-center rounded-full text-muted hover:bg-surface-2">
+                  <SubmitButton iconOnly aria-label={`Hapus ${q.label}`} className="flex h-10 w-10 items-center justify-center rounded-full text-muted hover:bg-surface-2">
                     <Trash2 className="h-4 w-4" aria-hidden />
-                  </button>
+                  </SubmitButton>
                 </form>
               </li>
             ))}
@@ -91,18 +92,18 @@ export default async function PengaturanPage({
             <option value="" disabled>Pilih kategori</option>
             {daily.map((c) => <option key={c.id} value={c.id}>{c.icon} {c.name}</option>)}
           </select>
-          <button className="btn-soft col-span-2"><Plus className="h-4 w-4" aria-hidden /> Tambah tombol cepat</button>
+          <SubmitButton pendingLabel="Menambah…" className="btn-soft col-span-2"><Plus className="h-4 w-4" aria-hidden /> Tambah tombol cepat</SubmitButton>
         </form>
       </section>
 
       <form action={saveName} className="card flex flex-col gap-3 p-5" aria-label="Nama">
         <label className="text-base font-semibold tracking-tight" htmlFor="dn">Nama tampilan kamu</label>
         <input id="dn" name="display_name" className="input" defaultValue={me.display_name} required />
-        <button className="btn-soft">Simpan nama</button>
+        <SubmitButton pendingLabel="Menyimpan…" className="btn-soft">Simpan nama</SubmitButton>
       </form>
 
       <form action={signOut}>
-        <button className="btn-soft w-full text-danger"><LogOut className="h-[18px] w-[18px]" aria-hidden /> Keluar</button>
+        <SubmitButton pendingLabel="Keluar…" className="btn-soft w-full text-danger"><LogOut className="h-[18px] w-[18px]" aria-hidden /> Keluar</SubmitButton>
       </form>
     </div>
   );
