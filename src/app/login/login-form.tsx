@@ -60,7 +60,7 @@ export function LoginForm({ initialError }: { initialError: string }) {
       setError("Kode salah atau sudah kedaluwarsa.");
       return;
     }
-    router.replace("/");
+    router.replace("/menu");
     router.refresh();
   }
 

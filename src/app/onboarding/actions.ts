@@ -22,5 +22,5 @@ export async function joinHousehold(_: OnboardingState, form: FormData): Promise
     p_display_name: String(form.get("display_name") ?? ""),
   });
   if (error) return { error: error.message };
-  redirect("/");
+  redirect("/menu");
 }

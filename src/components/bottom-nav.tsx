@@ -6,21 +6,29 @@ import { useState } from "react";
 import { haptic } from "@/lib/haptics";
 import { BarChart3, Home, Plus, ShoppingCart, Trophy } from "./icons";
 
-const TABS = [
+export type NavTab = {
+  href: string;
+  label: string;
+  Icon: React.ComponentType<{ className?: string; strokeWidth?: number }>;
+  primary?: boolean; // tombol tengah yang menonjol
+  match?: (path: string) => boolean; // aturan "aktif" khusus (bawaan: awalan path)
+};
+
+const MONEY_TABS: NavTab[] = [
   { href: "/", label: "Beranda", Icon: Home },
   { href: "/checklist", label: "Belanja", Icon: ShoppingCart },
   { href: "/catat", label: "Catat", Icon: Plus, primary: true },
   { href: "/evaluasi", label: "Evaluasi", Icon: BarChart3 },
   { href: "/pencapaian", label: "Prestasi", Icon: Trophy },
-] as const;
+];
 
-export function BottomNav() {
+export function BottomNav({ tabs = MONEY_TABS, fabLabel = "Catat pengeluaran" }: { tabs?: NavTab[]; fabLabel?: string }) {
   const pathname = usePathname();
   // Tab yang disentuh langsung menyala tanpa menunggu halaman tujuan selesai dimuat.
   // Dipakai hanya selama masih di halaman asal; begitu pathname berubah, nilai sebenarnya yang berlaku.
   const [tap, setTap] = useState<{ href: string; from: string } | null>(null);
   const current = tap && tap.from === pathname ? tap.href : pathname;
-  const active = (href: string) => (href === "/" ? current === "/" : current.startsWith(href));
+  const active = (t: NavTab) => (t.match ? t.match(current) : t.href === "/" ? current === "/" : current.startsWith(t.href));
 
   return (
     <nav
@@ -28,14 +36,15 @@ export function BottomNav() {
       className="fixed inset-x-0 bottom-0 z-20 px-3"
       style={{ paddingBottom: "max(env(safe-area-inset-bottom), 12px)" }}
     >
-      <ul className="mx-auto grid max-w-md grid-cols-5 items-center rounded-3xl border border-border bg-surface/90 px-1.5 py-1.5 shadow-float backdrop-blur-xl">
-        {TABS.map(({ href, label, Icon, ...t }) => {
-          const on = active(href);
+      <ul style={{ gridTemplateColumns: `repeat(${tabs.length}, minmax(0, 1fr))` }} className="mx-auto grid max-w-md items-center rounded-3xl border border-border bg-surface/90 px-1.5 py-1.5 shadow-float backdrop-blur-xl">
+        {tabs.map((t) => {
+          const { href, label, Icon } = t;
+          const on = active(t);
           return (
             <li key={href} className="flex justify-center">
-              {"primary" in t ? (
+              {t.primary ? (
                 <Link
-                  href={href} aria-label="Catat pengeluaran" aria-current={on ? "page" : undefined}
+                  href={href} aria-label={fabLabel} aria-current={on ? "page" : undefined}
                   onClick={() => { haptic("tap"); setTap({ href, from: pathname }); }}
                   className="-my-5 flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-hero-from to-hero-to text-white shadow-float ring-4 ring-bg transition active:scale-95"
                 >

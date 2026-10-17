@@ -1,11 +1,13 @@
-# Catatan Kita: Money Tracker Rumah Tangga
+# Catatan Kita: Money Tracker & Service Record
 
 Aplikasi web (PWA) untuk mencatat pengeluaran rumah tangga berdua. Prioritas: **input secepat mungkin**,
 plus checklist belanja bulanan berbasis stok, forecast budget, dan gamifikasi ringan.
 
 **Stack:** Next.js 16 (App Router) · Tailwind 4 · Supabase (Postgres, Auth, Realtime, RLS) · Vercel
 
-## Fitur
+Setelah login (dan splash bawaan PWA) muncul layar **Menu** dengan dua pilihan: **Money Tracker** dan **Service Record**.
+
+## Fitur Money Tracker
 
 | Layar | Isi |
 |---|---|
@@ -21,6 +23,32 @@ plus checklist belanja bulanan berbasis stok, forecast budget, dan gamifikasi ri
 Tema terang/gelap (otomatis + tombol), mobile-first, dan dirancang terasa seperti aplikasi native:
 transisi halaman (View Transitions), bottom sheet yang bisa diseret, pull-to-refresh, daftar yang berpindah dengan animasi,
 getaran halus (Android), dan perubahan di toko tetap aman saat sinyal hilang (antrean kirim ulang otomatis).
+
+## Service Record
+
+Pencatatan servis berkala kendaraan (mobil dan motor), dipakai berdua dalam satu rumah tangga.
+
+| Layar | Isi |
+|---|---|
+| **Kendaraan** | Kartu tiap kendaraan: km terkini + tombol **Update km**, status, dan part yang paling mendesak. Bagian "Perlu perhatian" merangkum part yang terlewat/sebentar lagi lintas kendaraan |
+| **Detail kendaraan** | Semua part dengan bar progres, interval, servis terakhir, dan batas km/tanggal berikutnya |
+| **Catat servis** | Tanggal, km, part yang diganti (yang mendekati jadwal tercentang otomatis), biaya, bengkel, catatan |
+| **Riwayat** | Timeline servis per kendaraan dengan total biaya; bisa dihapus |
+| **Atur** | Ubah interval tiap part, tambah/arsipkan part, frekuensi pengingat update km |
+
+- **Interval per part, per kendaraan**, dalam km, bulan, atau keduanya (mana yang tercapai lebih dulu). Saat menambah kendaraan, daftar
+  part diisi dari template mobil/motor (oli motor 3.000 km, oli mobil 7.000 km, busi 10.000 km, dst.). Angka itu perkiraan umum,
+  sesuaikan dengan buku servis kendaraanmu.
+- **Alert**: *Terlewat* bila sudah melewati batas km atau tanggal. *Sebentar lagi* bila sisa ≤ 15% interval (minimal 200 km), atau
+  perkiraan/batas waktunya ≤ 14 hari. Perkiraan hari dihitung dari laju pemakaianmu (km/hari dari catatan km 60 hari terakhir),
+  jadi kendaraan yang dipakai tiap hari dapat alert lebih awal.
+- **Pengingat update km**: tiap kendaraan punya frekuensi sendiri (bawaan 7 hari). Saat sudah waktunya, kartunya menyala dan muncul
+  banner di daftar kendaraan; layar Menu menampilkan lencana jumlah alert.
+- **Validasi km**: angka yang lebih kecil dari catatan terakhir atau melonjak > 3.000 km diminta dikonfirmasi dulu.
+
+> **Notifikasi hanya di dalam aplikasi** (lencana, banner, dan kartu yang menyala saat aplikasi dibuka). Belum ada push ke HP saat
+> aplikasi tertutup; itu butuh kunci VAPID, Vercel Cron, dan service role key Supabase, dan di iPhone hanya jalan bila aplikasi
+> dipasang di Layar Utama. Bisa ditambahkan nanti bila diperlukan.
 
 ### Periode gajian
 
@@ -78,7 +106,8 @@ Perintah lain: `npm test` (logika + skema SQL/RLS di Postgres nyata via pglite),
 2. **SQL Editor** → New query → jalankan berurutan:
    [`0001_init.sql`](supabase/migrations/0001_init.sql), lalu
    [`0002_period_income_store.sql`](supabase/migrations/0002_period_income_store.sql) (periode gajian, pemasukan, toko & urutan rak), lalu
-   [`0003_stock_check.sql`](supabase/migrations/0003_stock_check.sql) (waktu cek stok).
+   [`0003_stock_check.sql`](supabase/migrations/0003_stock_check.sql) (waktu cek stok), lalu
+   [`0004_service_record.sql`](supabase/migrations/0004_service_record.sql) (Service Record: kendaraan, part, km, riwayat servis).
    (Atau dengan CLI: `supabase link` lalu `supabase db push`, yang menjalankan keduanya.)
 3. **Project Settings → API**: salin **Project URL** dan **anon public key**. Keduanya aman berada di browser,
    karena keamanan data dijaga Row Level Security per rumah tangga.
@@ -148,6 +177,9 @@ src/lib/                            logika murni + tes: forecast, period, route 
 src/lib/server/xp.ts                pemberian XP/badge/quest (idempoten)
 src/lib/supabase/                   klien browser/server + penjaga sesi
 src/proxy.ts                        refresh sesi & redirect ke /login (pengganti middleware di Next 16)
+src/app/menu/                       layar Menu (pilih Money Tracker / Service Record)
+src/app/(servis)/servis/            Service Record: kendaraan, detail, catat servis, riwayat, atur
+src/lib/service/                    logika murni + tes: status part (km+waktu), laju km/hari, validasi, template part
 src/app/(app)/                      Beranda, Catat, Rencana gajian, Checklist (+Stok), Evaluasi, Pencapaian, Pengaturan
 src/app/actions/                    Server Actions (mencatat, tagihan, rencana gajian, stok, belanja, pengaturan)
 public/sw.js                        service worker: layar Catat tetap terbuka saat offline
