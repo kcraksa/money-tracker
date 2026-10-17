@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState, useTransition } from "react";
 import { logExpense, undoExpense } from "@/app/actions/expense";
-import { Check, Delete, StickyNote, Undo2, WifiOff, Zap } from "@/components/icons";
+import { Check, ChevronDown, Delete, StickyNote, Undo2, WifiOff, Zap } from "@/components/icons";
 import { PageHeader } from "@/components/page-header";
 import { Segmented } from "@/components/segmented";
 import { haptic } from "@/lib/haptics";
@@ -168,7 +168,7 @@ export function CatatForm({
         </section>
       )}
 
-      <section className="card flex flex-col gap-1 px-5 py-4" aria-label="Nominal">
+      <section className="card flex flex-col gap-1 px-5 py-3" aria-label="Nominal">
         <div className="flex items-center justify-between">
           <span className="flex items-center gap-2 text-sm font-medium text-muted">
             {selected ? <><span aria-hidden>{selected.icon}</span> {selected.name}</> : "Belum pilih kategori"}
@@ -197,24 +197,24 @@ export function CatatForm({
         </label>
       </section>
 
-      <div className="-mb-2 flex items-center justify-between">
-        <h2 className="text-sm font-semibold">Kategori</h2>
-        {!categoryId && amount > 0 && <span className="animate-pop text-xs font-semibold text-warn">Pilih satu dulu</span>}
-      </div>
-      <div className="flex flex-wrap gap-2" role="group" aria-label="Pilih kategori">
-        {categories.map((c) => {
-          const on = categoryId === c.id;
-          return (
-            <button
-              key={c.id} onClick={() => setPicked(c.id)} aria-pressed={on}
-              className={`flex min-h-11 items-center gap-2 rounded-full border px-4 text-sm font-semibold transition active:scale-95 ${
-                on ? "border-primary bg-primary text-primary-fg shadow-sm" : "border-border bg-surface"
-              }`}
-            >
-              <span aria-hidden>{c.icon}</span> {c.name}
-            </button>
-          );
-        })}
+      <div className="flex flex-col gap-1.5">
+        <div className="flex items-center justify-between">
+          <label htmlFor="kategori" className="text-sm font-semibold">Kategori</label>
+          {!categoryId && amount > 0 && <span className="animate-pop text-xs font-semibold text-warn">Pilih satu dulu</span>}
+        </div>
+        {/* Select native: di HP membuka pemilih bawaan sistem (roda/dialog) dan tetap mudah dijangkau. */}
+        <div className="relative">
+          <select
+            id="kategori" value={categoryId} onChange={(e) => { haptic("select"); setPicked(e.target.value); }}
+            className={`input appearance-none pr-11 font-semibold ${categoryId ? "" : "text-muted"}`}
+          >
+            <option value="" disabled>Pilih kategori…</option>
+            {categories.map((c) => (
+              <option key={c.id} value={c.id}>{c.icon} {c.name}</option>
+            ))}
+          </select>
+          <ChevronDown className="pointer-events-none absolute right-3.5 top-1/2 h-5 w-5 -translate-y-1/2 text-muted" aria-hidden />
+        </div>
       </div>
 
       <div className="grid grid-cols-3 gap-2" role="group" aria-label="Keypad">
@@ -222,7 +222,7 @@ export function CatatForm({
           <button
             key={k} onClick={() => press(k)}
             aria-label={k === "⌫" ? "Hapus angka terakhir" : undefined}
-            className="flex h-[52px] items-center justify-center rounded-2xl border border-border bg-surface text-[22px] font-semibold shadow-card transition active:scale-95 active:bg-surface-2"
+            className="flex h-12 items-center justify-center rounded-2xl border border-border bg-surface text-[22px] font-semibold shadow-card transition active:scale-95 active:bg-surface-2"
           >
             {k === "⌫" ? <Delete className="h-6 w-6 text-muted" aria-hidden /> : k}
           </button>
