@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState, useTransition } from "react";
 import { logExpense, undoExpense } from "@/app/actions/expense";
-import { Check, Delete, StickyNote, Undo2, WifiOff } from "@/components/icons";
+import { Check, ChevronDown, Delete, StickyNote, Undo2, WifiOff, Zap } from "@/components/icons";
 import { PageHeader } from "@/components/page-header";
 import { Segmented } from "@/components/segmented";
 import { haptic } from "@/lib/haptics";
@@ -11,12 +11,15 @@ import { rupiah } from "@/lib/format";
 import { getLocal, setLocal, useLocal } from "@/lib/local-store";
 import type { Category } from "@/lib/types";
 
-type Quick = { id: string; label: string; amount: number; categoryId: string; icon: string };
+type Quick = {
+  id: string; label: string; amount: number; categoryId: string; icon: string;
+  note: string | null; // keterangan yang ikut tersimpan (pill otomatis dari kebiasaan)
+  pinned: boolean; // true = tombol cepat tetap dari Pengaturan
+};
 type Pending = { id: string; categoryId: string; amount: number; spentOn?: string; note?: string };
 type Toast = { text: string; undoId?: string; tone: "ok" | "warn" };
 
 const QUEUE_KEY = "mt-queue";
-const LAST_CAT_KEY = "mt-last-cat";
 const MAX_DIGITS = 9;
 
 function readQueue(): Pending[] {
@@ -31,15 +34,13 @@ export function CatatForm({
 }: { categories: Category[]; quicks: Quick[]; today: string }) {
   const [digits, setDigits] = useState("");
   const [picked, setPicked] = useState<string>("");
-  const lastCat = useLocal(LAST_CAT_KEY);
   const queueRaw = useLocal(QUEUE_KEY);
   let queued = 0;
   try { queued = (JSON.parse(queueRaw || "[]") as unknown[]).length; } catch {}
-  const valid = (id: string) => categories.some((c) => c.id === id);
-  const categoryId = valid(picked) ? picked : valid(lastCat) ? lastCat : (categories[0]?.id ?? "");
+  // Kategori sengaja tidak punya nilai awal: dipilih sendiri tiap kali supaya tidak salah masuk.
+  const categoryId = categories.some((c) => c.id === picked) ? picked : "";
   const [yesterday, setYesterday] = useState(false);
   const [note, setNote] = useState("");
-  const [showNote, setShowNote] = useState(false);
   const [toast, setToast] = useState<Toast | null>(null);
   const [pending, start] = useTransition();
   const toastTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
@@ -103,24 +104,24 @@ export function CatatForm({
 
   function submit() {
     if (!amount || !categoryId) return;
-    setLocal(LAST_CAT_KEY, categoryId);
+    const keterangan = note.trim();
     save(
       {
         id: crypto.randomUUID(), categoryId, amount,
         spentOn: yesterday ? addDays(today, -1) : undefined,
-        note: note.trim() || undefined,
+        note: keterangan || undefined,
       },
-      selected?.name ?? "Pengeluaran",
+      `${selected?.name ?? "Pengeluaran"}${keterangan ? ` · ${keterangan}` : ""}`,
     );
     setDigits("");
     setNote("");
-    setShowNote(false);
+    setPicked(""); // kategori berikutnya dipilih lagi
     setYesterday(false);
   }
 
   function quick(q: Quick) {
     haptic("select");
-    save({ id: crypto.randomUUID(), categoryId: q.categoryId, amount: q.amount }, q.label);
+    save({ id: crypto.randomUUID(), categoryId: q.categoryId, amount: q.amount, note: q.note ?? undefined }, q.label);
   }
 
   function undo(id: string) {
@@ -137,7 +138,7 @@ export function CatatForm({
     <div className="flex flex-col gap-4">
       <PageHeader
         title="Catat"
-        subtitle="Nominal, kategori, simpan."
+        subtitle="Nominal, pilih kategori, simpan."
         actions={
           queued > 0 ? (
             <span className="pill bg-warn-bg text-warn">
@@ -148,24 +149,29 @@ export function CatatForm({
       />
 
       {quicks.length > 0 && (
-        <div data-no-ptr className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1" role="group" aria-label="Tombol cepat">
-          {quicks.map((q) => (
-            <button
-              key={q.id} onClick={() => quick(q)} disabled={pending}
-              className="flex min-h-11 shrink-0 items-center gap-2 whitespace-nowrap rounded-full border border-border bg-surface py-1.5 pl-2 pr-4 text-sm font-semibold shadow-card transition active:scale-95 disabled:opacity-50"
-            >
-              <span className="flex h-8 w-8 items-center justify-center rounded-full bg-primary-soft text-base" aria-hidden>{q.icon}</span>
-              <span>{q.label}</span>
-              <span className="text-muted tabular-nums">{rupiah(q.amount)}</span>
-            </button>
-          ))}
-        </div>
+        <section aria-label="Aksi cepat" className="flex flex-col gap-2">
+          <p className="flex items-center gap-1.5 text-xs font-medium text-muted">
+            <Zap className="h-3.5 w-3.5" aria-hidden /> Sering dicatat · satu ketuk langsung tersimpan
+          </p>
+          <div data-no-ptr className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1" role="group" aria-label="Pengeluaran yang sering dicatat">
+            {quicks.map((q) => (
+              <button
+                key={q.id} onClick={() => quick(q)} disabled={pending}
+                className="flex min-h-11 shrink-0 items-center gap-2 whitespace-nowrap rounded-full border border-border bg-surface py-1.5 pl-2 pr-4 text-sm font-semibold shadow-card transition active:scale-95 disabled:opacity-50"
+              >
+                <span className="flex h-8 w-8 items-center justify-center rounded-full bg-primary-soft text-base" aria-hidden>{q.icon}</span>
+                <span>{q.label}</span>
+                <span className="text-muted tabular-nums">{rupiah(q.amount)}</span>
+              </button>
+            ))}
+          </div>
+        </section>
       )}
 
-      <section className="card flex flex-col gap-1 px-5 py-4" aria-label="Nominal">
+      <section className="card flex flex-col gap-1 px-5 py-3" aria-label="Nominal">
         <div className="flex items-center justify-between">
           <span className="flex items-center gap-2 text-sm font-medium text-muted">
-            <span aria-hidden>{selected?.icon}</span> {selected?.name ?? "Pilih kategori"}
+            {selected ? <><span aria-hidden>{selected.icon}</span> {selected.name}</> : "Belum pilih kategori"}
           </span>
           <div className="w-44">
             <Segmented<"today" | "yesterday">
@@ -181,32 +187,34 @@ export function CatatForm({
         >
           {rupiah(amount)}
         </output>
-        {showNote ? (
+        <label className="relative mt-1 block">
+          <span className="sr-only">Keterangan</span>
+          <StickyNote className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" aria-hidden />
           <input
-            className="input min-h-11" placeholder="Catatan (opsional)" maxLength={80} autoFocus
-            value={note} onChange={(e) => setNote(e.target.value)}
+            className="input min-h-11 pl-10" placeholder="Keterangan (opsional)" maxLength={80}
+            enterKeyHint="done" value={note} onChange={(e) => setNote(e.target.value)}
           />
-        ) : (
-          <button onClick={() => setShowNote(true)} className="mx-auto flex min-h-8 items-center gap-1.5 text-xs font-medium text-muted">
-            <StickyNote className="h-3.5 w-3.5" aria-hidden /> Tambah catatan
-          </button>
-        )}
+        </label>
       </section>
 
-      <div className="flex flex-wrap gap-2" role="group" aria-label="Pilih kategori">
-        {categories.map((c) => {
-          const on = categoryId === c.id;
-          return (
-            <button
-              key={c.id} onClick={() => setPicked(c.id)} aria-pressed={on}
-              className={`flex min-h-11 items-center gap-2 rounded-full border px-4 text-sm font-semibold transition active:scale-95 ${
-                on ? "border-primary bg-primary text-primary-fg shadow-sm" : "border-border bg-surface"
-              }`}
-            >
-              <span aria-hidden>{c.icon}</span> {c.name}
-            </button>
-          );
-        })}
+      <div className="flex flex-col gap-1.5">
+        <div className="flex items-center justify-between">
+          <label htmlFor="kategori" className="text-sm font-semibold">Kategori</label>
+          {!categoryId && amount > 0 && <span className="animate-pop text-xs font-semibold text-warn">Pilih satu dulu</span>}
+        </div>
+        {/* Select native: di HP membuka pemilih bawaan sistem (roda/dialog) dan tetap mudah dijangkau. */}
+        <div className="relative">
+          <select
+            id="kategori" value={categoryId} onChange={(e) => { haptic("select"); setPicked(e.target.value); }}
+            className={`input appearance-none pr-11 font-semibold ${categoryId ? "" : "text-muted"}`}
+          >
+            <option value="" disabled>Pilih kategori…</option>
+            {categories.map((c) => (
+              <option key={c.id} value={c.id}>{c.icon} {c.name}</option>
+            ))}
+          </select>
+          <ChevronDown className="pointer-events-none absolute right-3.5 top-1/2 h-5 w-5 -translate-y-1/2 text-muted" aria-hidden />
+        </div>
       </div>
 
       <div className="grid grid-cols-3 gap-2" role="group" aria-label="Keypad">
@@ -214,7 +222,7 @@ export function CatatForm({
           <button
             key={k} onClick={() => press(k)}
             aria-label={k === "⌫" ? "Hapus angka terakhir" : undefined}
-            className="flex h-[52px] items-center justify-center rounded-2xl border border-border bg-surface text-[22px] font-semibold shadow-card transition active:scale-95 active:bg-surface-2"
+            className="flex h-12 items-center justify-center rounded-2xl border border-border bg-surface text-[22px] font-semibold shadow-card transition active:scale-95 active:bg-surface-2"
           >
             {k === "⌫" ? <Delete className="h-6 w-6 text-muted" aria-hidden /> : k}
           </button>
@@ -222,7 +230,7 @@ export function CatatForm({
       </div>
 
       <button className="btn-primary min-h-14 text-base" onClick={submit} disabled={!amount || !categoryId || pending}>
-        {pending ? "Menyimpan…" : amount ? `Simpan ${rupiah(amount)}` : "Simpan"}
+        {pending ? "Menyimpan…" : !amount ? "Simpan" : !categoryId ? "Pilih kategori dulu" : `Simpan ${rupiah(amount)}`}
       </button>
 
       {toast && (

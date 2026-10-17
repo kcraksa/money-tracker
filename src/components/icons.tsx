@@ -1,10 +1,10 @@
 import {
-  AlertTriangle, BarChart3, Bolt, CalendarDays, Check, ChevronLeft, ChevronRight, ClipboardCheck, Coins, Copy, Delete, Flame, Crown, Gift, Home, KeyRound, Lightbulb, Lock, LogOut, Mail, Minus, NotebookPen, Package, PiggyBank, Plus, Receipt, RefreshCw, Route, Settings, ShieldCheck, ShoppingCart, Sparkles, StickyNote, Store, Trash2, Trophy, Undo2, Users, Wallet, WifiOff, X,
+  AlertTriangle, BarChart3, Bolt, CalendarDays, Check, ChevronDown, ChevronLeft, ChevronRight, ClipboardCheck, Coins, Copy, Delete, Flame, Crown, Gift, Home, KeyRound, Lightbulb, Lock, LogOut, Mail, Minus, NotebookPen, Package, PiggyBank, Plus, Receipt, RefreshCw, Route, Settings, ShieldCheck, ShoppingCart, Sparkles, StickyNote, Store, Trash2, Trophy, Undo2, Users, Wallet, WifiOff, X, Zap,
   type LucideIcon,
 } from "lucide-react";
 
 export {
-  AlertTriangle, BarChart3, Bolt, CalendarDays, Check, ChevronLeft, ChevronRight, ClipboardCheck, Coins, Copy, Delete, Flame, Crown, Gift, Home, KeyRound, Lightbulb, Lock, LogOut, Mail, Minus, NotebookPen, Package, PiggyBank, Plus, Receipt, RefreshCw, Route, Settings, ShieldCheck, ShoppingCart, Sparkles, StickyNote, Store, Trash2, Trophy, Undo2, Users, Wallet, WifiOff, X,
+  AlertTriangle, BarChart3, Bolt, CalendarDays, Check, ChevronDown, ChevronLeft, ChevronRight, ClipboardCheck, Coins, Copy, Delete, Flame, Crown, Gift, Home, KeyRound, Lightbulb, Lock, LogOut, Mail, Minus, NotebookPen, Package, PiggyBank, Plus, Receipt, RefreshCw, Route, Settings, ShieldCheck, ShoppingCart, Sparkles, StickyNote, Store, Trash2, Trophy, Undo2, Users, Wallet, WifiOff, X, Zap,
 };
 
 // Ikon badge & quest dipetakan dari kunci di lib/gamification (lib tetap bebas dari UI).

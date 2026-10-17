@@ -64,8 +64,8 @@ export default async function PengaturanPage({
 
       <section className="card flex flex-col gap-4 p-5" aria-label="Tombol cepat">
         <div>
-          <h2 className="text-base font-semibold tracking-tight">Tombol cepat</h2>
-          <p className="text-xs text-muted">Muncul di layar Catat, satu tap langsung tersimpan.</p>
+          <h2 className="text-base font-semibold tracking-tight">Tombol cepat tetap</h2>
+          <p className="text-xs text-muted">Selalu muncul di layar Catat, satu ketuk langsung tersimpan. Selain ini, pengeluaran yang sering kamu catat muncul otomatis di sana.</p>
         </div>
         {(quicks.data ?? []).length > 0 && (
           <ul className="flex flex-col divide-y divide-border">
