@@ -40,7 +40,7 @@ export default async function StokPage() {
       <PageHeader title="Stok rumah" subtitle="Tekan − saat terpakai, + saat menambah" />
 
       {items.length > 0 && (
-        <Link href="/checklist/cek" className="card flex items-center gap-3 p-4 transition active:scale-[0.99]">
+        <Link href="/checklist/cek" transitionTypes={["nav-forward"]} className="card flex items-center gap-3 p-4 transition active:scale-[0.99]">
           <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary-soft text-primary">
             <ClipboardCheck className="h-5 w-5" aria-hidden />
           </span>

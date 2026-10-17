@@ -53,7 +53,7 @@ export default async function PengaturanPage({
         </div>
       </section>
 
-      <Link href="/rencana" className="card flex items-center gap-3 p-4 transition active:scale-[0.99]">
+      <Link href="/rencana" transitionTypes={["nav-forward"]} className="card flex items-center gap-3 p-4 transition active:scale-[0.99]">
         <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-primary-soft text-primary"><Wallet className="h-5 w-5" aria-hidden /></span>
         <span className="min-w-0 flex-1">
           <span className="block font-semibold">Rencana gajian & anggaran</span>

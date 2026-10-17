@@ -49,7 +49,7 @@ export function HomeView(p: HomeProps) {
         actions={
           <>
             <ThemeToggle />
-            <Link href="/pengaturan" aria-label="Pengaturan"
+            <Link href="/pengaturan" transitionTypes={["nav-forward"]} aria-label="Pengaturan"
               className="flex h-10 w-10 items-center justify-center rounded-full border border-border bg-surface text-muted shadow-card">
               <Settings className="h-[18px] w-[18px]" />
             </Link>
@@ -93,7 +93,7 @@ export function HomeView(p: HomeProps) {
       </section>
 
       {p.overdue && (
-        <Link href="/rencana" className="flex items-center gap-3 rounded-2xl bg-warn-bg p-3.5 text-sm text-warn">
+        <Link href="/rencana" transitionTypes={["nav-forward"]} className="flex items-center gap-3 rounded-2xl bg-warn-bg p-3.5 text-sm text-warn">
           <AlertTriangle className="h-[18px] w-[18px] shrink-0" aria-hidden />
           <span className="flex-1"><b>Periode sudah lewat sebulan.</b> Catat gajian baru supaya anggaran periode berikutnya mulai.</span>
           <ChevronRight className="h-4 w-4 shrink-0" aria-hidden />
@@ -116,7 +116,7 @@ export function HomeView(p: HomeProps) {
           <ProgressBar pct={monthPct} tone={monthPct > 100 ? "danger" : "primary"} label="Total pemakaian periode ini" />
         )}
         {p.income ? (
-          <Link href="/rencana" className="grid grid-cols-3 divide-x divide-border rounded-xl bg-surface-2 text-center">
+          <Link href="/rencana" transitionTypes={["nav-forward"]} className="grid grid-cols-3 divide-x divide-border rounded-xl bg-surface-2 text-center">
             <MiniStat label="Pemasukan" value={rupiah(p.income.total)} />
             <MiniStat label="Dialokasikan" value={rupiah(p.income.allocated)} />
             <MiniStat
@@ -126,7 +126,7 @@ export function HomeView(p: HomeProps) {
             />
           </Link>
         ) : (
-          <Link href="/rencana" className="flex items-center gap-3 rounded-xl bg-primary-soft p-3 text-sm">
+          <Link href="/rencana" transitionTypes={["nav-forward"]} className="flex items-center gap-3 rounded-xl bg-primary-soft p-3 text-sm">
             <Wallet className="h-5 w-5 shrink-0 text-primary" aria-hidden />
             <span className="flex-1">
               <b>{p.hasPeriod ? "Catat pemasukan periode ini" : "Catat gajian"}</b> lalu bagi ke tiap pos anggaran.
@@ -159,7 +159,7 @@ export function HomeView(p: HomeProps) {
       <section aria-label="Sisa budget">
         <h2 className="section-title">Sisa anggaran</h2>
         {noBudgets && (
-          <Link href="/rencana" className="card mb-2 flex items-center justify-between gap-3 text-sm">
+          <Link href="/rencana" transitionTypes={["nav-forward"]} className="card mb-2 flex items-center justify-between gap-3 text-sm">
             <span className="text-muted">Anggaran belum dibagi. Atur dulu supaya sisa dan forecast muncul.</span>
             <span className="shrink-0 font-semibold text-primary">Atur</span>
           </Link>

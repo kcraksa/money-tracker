@@ -28,6 +28,11 @@ export function ThemeToggle() {
   function toggle() {
     const next: Theme = theme === "dark" ? "light" : "dark";
     document.documentElement.dataset.theme = next;
+    // Warna status bar/toolbar browser mengikuti tema pilihan.
+    document.querySelectorAll<HTMLMetaElement>('meta[name="theme-color"]').forEach((m) => {
+      m.removeAttribute("media");
+      m.content = next === "dark" ? "#0a100f" : "#f4f6f5";
+    });
     try { localStorage.setItem("theme", next); } catch {}
   }
 

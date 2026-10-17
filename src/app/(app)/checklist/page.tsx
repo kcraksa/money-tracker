@@ -34,14 +34,14 @@ export default async function ChecklistPage() {
             <p className="max-w-xs text-sm text-muted">
               Belum ada barang. Tambahkan barang belanja bulanan dulu di tab Stok rumah.
             </p>
-            <Link href="/checklist/stok" className="btn-primary mt-1">Isi daftar barang</Link>
+            <Link href="/checklist/stok" transitionTypes={["nav-forward"]} className="btn-primary mt-1">Isi daftar barang</Link>
           </>
         ) : (
           <>
             <p className="max-w-xs text-sm text-muted">
               Checklist dibuat otomatis dari rekomendasi: kebutuhan bulanan dikurangi stok di rumah.
             </p>
-            <Link href="/checklist/cek" className="btn-primary mt-1">
+            <Link href="/checklist/cek" transitionTypes={["nav-forward"]} className="btn-primary mt-1">
               <ClipboardCheck className="h-[18px] w-[18px]" aria-hidden /> Cek stok dulu (disarankan)
             </Link>
             <form action={createList}><button className="btn-ghost text-sm">Lewati, buat checklist sekarang</button></form>
@@ -82,7 +82,7 @@ export default async function ChecklistPage() {
   return (
     <div className="flex flex-col gap-4">
       {suggestCheck && (
-        <Link href="/checklist/cek" className="flex items-center gap-3 rounded-2xl bg-primary-soft p-3.5 text-sm">
+        <Link href="/checklist/cek" transitionTypes={["nav-forward"]} className="flex items-center gap-3 rounded-2xl bg-primary-soft p-3.5 text-sm">
           <ClipboardCheck className="h-5 w-5 shrink-0 text-primary" aria-hidden />
           <span className="flex-1"><b>Sudah cek stok di rumah?</b> Cek dulu supaya rekomendasi belanja akurat.</span>
           <ChevronRight className="h-4 w-4 shrink-0 text-primary" aria-hidden />

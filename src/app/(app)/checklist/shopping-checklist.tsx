@@ -1,14 +1,17 @@
 "use client";
 
-import { Fragment, useMemo, useState } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { addExtra, addStore, finishList, refreshList, removeListItem, setListStore, updateListItem } from "@/app/actions/shopping";
-import { Check, Minus, Plus, RefreshCw, Route, Store, X } from "@/components/icons";
+import { Check, Minus, Plus, RefreshCw, Route, Store, WifiOff, X } from "@/components/icons";
 import { PageHeader } from "@/components/page-header";
+import { Sheet } from "@/components/sheet";
 import { ProgressBar } from "@/components/progress-bar";
 import { qty as fmtQty, rupiah } from "@/lib/format";
+import { haptic } from "@/lib/haptics";
 import { sortByRoute, type OrderEntry } from "@/lib/route";
 import { lineTotal } from "@/lib/shopping";
 import type { ListItem } from "@/lib/types";
+import { useFlip } from "@/lib/use-flip";
 
 type Store = { id: string; name: string };
 type Props = {
@@ -25,6 +28,43 @@ export function ShoppingChecklist({ listId, periodLabel, initialItems, stores, s
   const [storeId, setStoreId] = useState(initialStore);
   const [showExtra, setShowExtra] = useState(false);
   const [showStore, setShowStore] = useState(false);
+  const [showFinish, setShowFinish] = useState(false);
+  const listRef = useFlip<HTMLUListElement>();
+
+  // Perubahan dikirim ke server di latar belakang. Kalau sinyal hilang (sering terjadi di toko),
+  // perubahan menunggu di antrean dan dikirim ulang otomatis begitu online.
+  type Patch = { checked?: boolean; qty_bought?: number; unit_price_actual?: number };
+  const queue = useRef(new Map<string, Patch>());
+  const [unsynced, setUnsynced] = useState(0);
+  const flushing = useRef(false);
+  const flush = useCallback(async () => {
+    if (flushing.current) return;
+    flushing.current = true;
+    try {
+      for (const [id, patch] of [...queue.current]) {
+        try {
+          const r = await updateListItem(id, patch);
+          if (!r.ok) break;
+        } catch {
+          break; // masih offline
+        }
+        queue.current.delete(id);
+        setUnsynced(queue.current.size);
+      }
+    } finally {
+      flushing.current = false;
+    }
+  }, []);
+  const save = useCallback((id: string, patch: Patch) => {
+    queue.current.set(id, { ...queue.current.get(id), ...patch });
+    setUnsynced(queue.current.size);
+    void flush();
+  }, [flush]);
+  useEffect(() => {
+    window.addEventListener("online", flush);
+    const t = setInterval(() => { if (queue.current.size) void flush(); }, 8000);
+    return () => { window.removeEventListener("online", flush); clearInterval(t); };
+  }, [flush]);
   // Barang yang baru dicentang tetap di tempatnya (untuk isi harga) sampai barang berikutnya dicentang.
   const [activeId, setActiveId] = useState<string | null>(null);
   // Sinkron saat pasangan mengubah daftar (router.refresh dari realtime).
@@ -67,7 +107,7 @@ export function ShoppingChecklist({ listId, periodLabel, initialItems, stores, s
 
   function pickStore(id: string | null) {
     setStoreId(id);
-    setListStore(listId, id);
+    setListStore(listId, id).catch(() => {}); // pilihan toko tidak kritis; abaikan bila offline
   }
 
   // Penanda bagian: rute toko / posisi belum diketahui / sudah di keranjang.
@@ -77,7 +117,16 @@ export function ShoppingChecklist({ listId, periodLabel, initialItems, stores, s
 
   return (
     <div className="flex flex-col gap-4">
-      <PageHeader title="Belanja" subtitle={periodLabel} />
+      <PageHeader
+        title="Belanja" subtitle={periodLabel}
+        actions={
+          unsynced > 0 ? (
+            <span className="pill bg-warn-bg text-warn" role="status">
+              <WifiOff className="h-3.5 w-3.5" aria-hidden /> {unsynced} menunggu sinyal
+            </span>
+          ) : undefined
+        }
+      />
 
       <section className="card flex flex-col gap-3" aria-label="Toko">
         <div className="flex items-center gap-2 text-sm font-semibold">
@@ -95,19 +144,12 @@ export function ShoppingChecklist({ listId, periodLabel, initialItems, stores, s
             </button>
           ))}
           <button
-            onClick={() => setShowStore((v) => !v)} aria-expanded={showStore}
+            onClick={() => setShowStore(true)}
             className="flex min-h-10 items-center gap-1.5 rounded-full border border-dashed border-border px-4 text-sm font-semibold text-muted"
           >
             <Plus className="h-4 w-4" aria-hidden /> Toko
           </button>
         </div>
-        {showStore && (
-          <form action={addStore} className="animate-pop flex gap-2">
-            <input type="hidden" name="list_id" value={listId} />
-            <input name="name" required maxLength={40} className="input min-h-11" placeholder="Nama toko, mis. Hari-Hari" aria-label="Nama toko" />
-            <button className="btn-primary shrink-0">Tambah</button>
-          </form>
-        )}
         <p className="flex items-start gap-2 text-xs text-muted">
           <Route className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden />
           {!storeId
@@ -139,32 +181,19 @@ export function ShoppingChecklist({ listId, periodLabel, initialItems, stores, s
         <p className="card text-center text-sm text-muted">Stok masih cukup, tidak ada yang perlu dibeli periode ini. 🎉</p>
       )}
 
-      <ul className="flex flex-col gap-2.5">
+      <ul ref={listRef} className="flex flex-col gap-2.5">
         {routed.map((it, idx) => (
           <Fragment key={it.id}>
             {idx === firstUnknown && hasKnownOpen && <Divider>Posisi belum diketahui di toko ini</Divider>}
             {idx === firstChecked && <Divider>Sudah di keranjang</Divider>}
-            <Row item={it} onChange={(p) => patch(it.id, p)} />
+            <Row item={it} onChange={(p) => patch(it.id, p)} save={(p) => save(it.id, p)} />
           </Fragment>
         ))}
       </ul>
 
-      {showExtra ? (
-        <form action={addExtra} className="card animate-pop grid grid-cols-6 gap-2">
-          <input type="hidden" name="list_id" value={listId} />
-          <p className="col-span-6 text-sm font-semibold">Barang di luar daftar</p>
-          <input name="name" required className="input col-span-6" placeholder="Nama barang" />
-          <input name="qty" inputMode="decimal" className="input col-span-2" placeholder="Jml" defaultValue="1" aria-label="Jumlah" />
-          <input name="unit" className="input col-span-2" placeholder="pcs" aria-label="Satuan" />
-          <input name="price" inputMode="numeric" className="input col-span-2" placeholder="Harga" aria-label="Harga per satuan" />
-          <button className="btn-primary col-span-4">Tambah</button>
-          <button type="button" className="btn-soft col-span-2" onClick={() => setShowExtra(false)}>Batal</button>
-        </form>
-      ) : (
-        <button className="btn-soft border-dashed" onClick={() => setShowExtra(true)}>
-          <Plus className="h-4 w-4" aria-hidden /> Barang di luar daftar
-        </button>
-      )}
+      <button className="btn-soft border-dashed" onClick={() => setShowExtra(true)}>
+        <Plus className="h-4 w-4" aria-hidden /> Barang di luar daftar
+      </button>
 
       <div className="grid grid-cols-[auto_1fr] gap-2">
         <form action={refreshList}>
@@ -172,18 +201,54 @@ export function ShoppingChecklist({ listId, periodLabel, initialItems, stores, s
             <RefreshCw className="h-[18px] w-[18px]" aria-hidden />
           </button>
         </form>
-        <form
-          action={finishList}
-          onSubmit={(e) => {
-            if (!confirm(`Selesai belanja? Stok akan bertambah dan ${rupiah(actual)} dicatat sebagai pengeluaran.`)) e.preventDefault();
-          }}
-        >
-          <input type="hidden" name="list_id" value={listId} />
-          <button className="btn-primary w-full" disabled={actual === 0}>
-            <Check className="h-[18px] w-[18px]" aria-hidden /> Selesai belanja
-          </button>
-        </form>
+        <button className="btn-primary" disabled={actual === 0} onClick={() => { haptic("select"); setShowFinish(true); }}>
+          <Check className="h-[18px] w-[18px]" aria-hidden /> Selesai belanja
+        </button>
       </div>
+
+      <Sheet open={showStore} onClose={() => setShowStore(false)} title="Tambah toko">
+        <form action={addStore} onSubmit={() => setShowStore(false)} className="flex flex-col gap-3 pb-2">
+          <input type="hidden" name="list_id" value={listId} />
+          <input
+            name="name" required maxLength={40} autoFocus className="input" aria-label="Nama toko"
+            placeholder="Nama toko, mis. Hari-Hari" enterKeyHint="done"
+          />
+          <p className="text-xs text-muted">Urutan rak toko ini akan dipelajari dari urutan kamu mencentang barang.</p>
+          <button className="btn-primary">Tambah & pakai toko ini</button>
+        </form>
+      </Sheet>
+
+      <Sheet open={showExtra} onClose={() => setShowExtra(false)} title="Barang di luar daftar">
+        <form action={addExtra} onSubmit={() => setShowExtra(false)} className="grid grid-cols-6 gap-2 pb-2">
+          <input type="hidden" name="list_id" value={listId} />
+          <input name="name" required autoFocus className="input col-span-6" placeholder="Nama barang" aria-label="Nama barang" enterKeyHint="next" />
+          <input name="qty" inputMode="decimal" className="input col-span-2" placeholder="Jml" defaultValue="1" aria-label="Jumlah" />
+          <input name="unit" className="input col-span-2" placeholder="pcs" aria-label="Satuan" />
+          <input name="price" inputMode="numeric" className="input col-span-2" placeholder="Harga" aria-label="Harga per satuan" enterKeyHint="done" />
+          <button className="btn-primary col-span-6">Tambah ke keranjang</button>
+        </form>
+      </Sheet>
+
+      <Sheet open={showFinish} onClose={() => setShowFinish(false)} title="Selesai belanja?">
+        <div className="flex flex-col gap-4 pb-2">
+          <dl className="card flex flex-col gap-2.5 p-4 text-sm">
+            <div className="flex justify-between"><dt className="text-muted">Barang dicentang</dt><dd className="font-semibold tabular-nums">{items.filter((i) => i.checked).length} dari {items.length}</dd></div>
+            <div className="flex justify-between"><dt className="text-muted">Estimasi</dt><dd className="font-semibold tabular-nums">{rupiah(estimate)}</dd></div>
+            <div className="flex justify-between"><dt className="text-muted">Terbelanja</dt><dd className={`font-bold tabular-nums ${over ? "text-danger" : "text-ok"}`}>{rupiah(actual)}</dd></div>
+          </dl>
+          {items.some((i) => !i.checked && !i.is_extra) && (
+            <p className="rounded-2xl bg-warn-bg p-3 text-sm text-warn">
+              {items.filter((i) => !i.checked && !i.is_extra).length} barang belum dicentang dan tidak akan masuk ke stok.
+            </p>
+          )}
+          <p className="text-sm text-muted">Stok bertambah sesuai yang dibeli dan {rupiah(actual)} dicatat sebagai pengeluaran.</p>
+          <form action={finishList} className="flex flex-col gap-2">
+            <input type="hidden" name="list_id" value={listId} />
+            <button className="btn-primary min-h-14 text-base"><Check className="h-5 w-5" aria-hidden /> Ya, selesai &amp; catat</button>
+            <button type="button" className="btn-ghost" onClick={() => setShowFinish(false)}>Lanjut belanja</button>
+          </form>
+        </div>
+      </Sheet>
     </div>
   );
 }
@@ -196,7 +261,9 @@ function Divider({ children }: { children: React.ReactNode }) {
   );
 }
 
-function Row({ item, onChange }: { item: ListItem; onChange: (p: Partial<ListItem>) => void }) {
+function Row({
+  item, onChange, save,
+}: { item: ListItem; onChange: (p: Partial<ListItem>) => void; save: (p: { checked?: boolean; qty_bought?: number; unit_price_actual?: number }) => void }) {
   const [price, setPrice] = useState(item.unit_price_actual ? String(item.unit_price_actual) : "");
   const [seenPrice, setSeenPrice] = useState(item.unit_price_actual);
   if (seenPrice !== item.unit_price_actual) {
@@ -206,29 +273,30 @@ function Row({ item, onChange }: { item: ListItem; onChange: (p: Partial<ListIte
 
   function toggle() {
     const checked = !item.checked;
+    haptic(checked ? "select" : "tap");
     // Saat pertama dicentang, isi harga dengan estimasi supaya tinggal koreksi sesuai rak.
     const unit_price_actual = checked && !item.unit_price_actual ? item.unit_price_est : item.unit_price_actual;
     onChange({ checked, unit_price_actual, checked_at: checked ? new Date().toISOString() : null });
     setPrice(unit_price_actual ? String(unit_price_actual) : "");
-    updateListItem(item.id, { checked, unit_price_actual });
+    save({ checked, unit_price_actual });
   }
 
   function step(delta: number) {
     const q = Math.max(0, Math.round((item.qty_bought + delta) * 100) / 100);
     onChange({ qty_bought: q });
-    updateListItem(item.id, { qty_bought: q });
+    save({ qty_bought: q });
   }
 
   function commitPrice() {
     const v = Number(price || 0);
     onChange({ unit_price_actual: v });
-    updateListItem(item.id, { unit_price_actual: v });
+    save({ unit_price_actual: v });
   }
 
   const total = lineTotal(item.qty_bought, item.unit_price_actual);
 
   return (
-    <li className={`card flex flex-col gap-3 p-3.5 transition ${item.checked ? "border-primary/40 bg-primary-soft" : ""}`}>
+    <li data-flip={item.id} className={`card flex flex-col p-3.5 transition-colors duration-300 ${item.checked ? "border-primary/40 bg-primary-soft" : ""}`}>
       <div className="flex items-center gap-3">
         <button
           role="checkbox" aria-checked={item.checked} aria-label={`Centang ${item.name}`} onClick={toggle}
@@ -256,28 +324,36 @@ function Row({ item, onChange }: { item: ListItem; onChange: (p: Partial<ListIte
         )}
       </div>
 
-      {item.checked && (
-        <div className="animate-pop flex flex-wrap items-center gap-2 pl-11">
-          <div className="flex items-center rounded-xl border border-border bg-surface" role="group" aria-label="Jumlah dibeli">
-            <button className="flex h-10 w-10 items-center justify-center text-muted" aria-label="Kurangi" onClick={() => step(-1)}>
-              <Minus className="h-4 w-4" aria-hidden />
-            </button>
-            <span className="w-9 text-center font-bold tabular-nums">{fmtQty(item.qty_bought)}</span>
-            <button className="flex h-10 w-10 items-center justify-center text-primary" aria-label="Tambah" onClick={() => step(1)}>
-              <Plus className="h-4 w-4" aria-hidden />
-            </button>
-          </div>
-          <span className="text-muted" aria-hidden>×</span>
-          <input
-            inputMode="numeric" aria-label={`Harga per ${item.unit}`} placeholder={`Harga/${item.unit}`}
-            className="input min-h-10 w-28 px-3 text-right font-semibold tabular-nums" value={price}
-            onChange={(e) => setPrice(e.target.value.replace(/\D/g, ""))} onBlur={commitPrice}
-          />
-          <div className="basis-full text-right text-sm text-muted">
-            Subtotal <span className="font-bold tabular-nums text-fg">{rupiah(total)}</span>
+      {/* Selalu dirender supaya bisa membuka/menutup mulus; inert saat tertutup agar tak bisa difokus. */}
+      <div
+        inert={!item.checked} aria-hidden={!item.checked}
+        className={`grid transition-[grid-template-rows,opacity] duration-300 ease-out ${
+          item.checked ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"
+        }`}
+      >
+        <div className="overflow-hidden">
+          <div className="flex flex-wrap items-center gap-2 pl-11 pt-3">
+            <div className="flex items-center rounded-xl border border-border bg-surface" role="group" aria-label="Jumlah dibeli">
+              <button className="flex h-10 w-10 items-center justify-center text-muted" aria-label="Kurangi" onClick={() => { haptic("tap"); step(-1); }}>
+                <Minus className="h-4 w-4" aria-hidden />
+              </button>
+              <span key={item.qty_bought} className="animate-tick w-9 text-center font-bold tabular-nums">{fmtQty(item.qty_bought)}</span>
+              <button className="flex h-10 w-10 items-center justify-center text-primary" aria-label="Tambah" onClick={() => { haptic("tap"); step(1); }}>
+                <Plus className="h-4 w-4" aria-hidden />
+              </button>
+            </div>
+            <span className="text-muted" aria-hidden>×</span>
+            <input
+              inputMode="numeric" aria-label={`Harga per ${item.unit}`} placeholder={`Harga/${item.unit}`}
+              className="input min-h-10 w-28 px-3 text-right font-semibold tabular-nums" value={price}
+              onChange={(e) => setPrice(e.target.value.replace(/\D/g, ""))} onBlur={commitPrice}
+            />
+            <div className="basis-full text-right text-sm text-muted">
+              Subtotal <span className="font-bold tabular-nums text-fg">{rupiah(total)}</span>
+            </div>
           </div>
         </div>
-      )}
+      </div>
     </li>
   );
 }

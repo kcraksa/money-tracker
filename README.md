@@ -18,7 +18,9 @@ plus checklist belanja bulanan berbasis stok, forecast budget, dan gamifikasi ri
 | **Evaluasi** | Rekomendasi vs dibeli, barang di luar daftar, uang yang dihemat |
 | **Pencapaian** | Badge, quest, papan kontribusi dua jalur (rajin mencatat vs hemat) |
 
-Tema terang/gelap (otomatis + tombol), mobile-first.
+Tema terang/gelap (otomatis + tombol), mobile-first, dan dirancang terasa seperti aplikasi native:
+transisi halaman (View Transitions), bottom sheet yang bisa diseret, pull-to-refresh, daftar yang berpindah dengan animasi,
+getaran halus (Android), dan perubahan di toko tetap aman saat sinyal hilang (antrean kirim ulang otomatis).
 
 ### Periode gajian
 

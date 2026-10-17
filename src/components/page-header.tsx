@@ -7,7 +7,7 @@ export function PageHeader({
   return (
     <header className="flex items-center gap-3 pb-1">
       {back && (
-        <Link href={back} aria-label="Kembali"
+        <Link href={back} transitionTypes={["nav-back"]} aria-label="Kembali"
           className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-border bg-surface text-muted shadow-card">
           <ChevronLeft className="h-5 w-5" />
         </Link>

@@ -2,6 +2,8 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useState } from "react";
+import { haptic } from "@/lib/haptics";
 import { BarChart3, Home, Plus, ShoppingCart, Trophy } from "./icons";
 
 const TABS = [
@@ -14,7 +16,11 @@ const TABS = [
 
 export function BottomNav() {
   const pathname = usePathname();
-  const active = (href: string) => (href === "/" ? pathname === "/" : pathname.startsWith(href));
+  // Tab yang disentuh langsung menyala tanpa menunggu halaman tujuan selesai dimuat.
+  // Dipakai hanya selama masih di halaman asal; begitu pathname berubah, nilai sebenarnya yang berlaku.
+  const [tap, setTap] = useState<{ href: string; from: string } | null>(null);
+  const current = tap && tap.from === pathname ? tap.href : pathname;
+  const active = (href: string) => (href === "/" ? current === "/" : current.startsWith(href));
 
   return (
     <nav
@@ -30,6 +36,7 @@ export function BottomNav() {
               {"primary" in t ? (
                 <Link
                   href={href} aria-label="Catat pengeluaran" aria-current={on ? "page" : undefined}
+                  onClick={() => { haptic("tap"); setTap({ href, from: pathname }); }}
                   className="-my-5 flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-hero-from to-hero-to text-white shadow-float ring-4 ring-bg transition active:scale-95"
                 >
                   <Icon className="h-7 w-7" strokeWidth={2.5} />
@@ -37,6 +44,7 @@ export function BottomNav() {
               ) : (
                 <Link
                   href={href} aria-current={on ? "page" : undefined}
+                  onClick={() => { haptic("tap"); setTap({ href, from: pathname }); }}
                   className={`flex min-h-14 w-full flex-col items-center justify-center gap-0.5 rounded-2xl px-1 text-[11px] font-medium transition ${
                     on ? "text-primary" : "text-muted hover:text-fg"
                   }`}

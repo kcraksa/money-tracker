@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { applyStockCheck } from "@/app/actions/stock";
 import { ClipboardCheck, Minus, Plus } from "@/components/icons";
 import { qty } from "@/lib/format";
+import { haptic } from "@/lib/haptics";
 
 type Item = { id: string; name: string; unit: string; stock: number; need: number; checked: string };
 
@@ -24,7 +25,7 @@ export function StockCheck({ items }: { items: Item[] }) {
   const changed = items.filter((i) => value(i) !== i.stock);
 
   function set(i: Item, v: number) {
-    navigator.vibrate?.(8);
+    haptic("tap");
     setCounts((c) => ({ ...c, [i.id]: String(Math.max(0, Math.round(v * 100) / 100)) }));
   }
 
