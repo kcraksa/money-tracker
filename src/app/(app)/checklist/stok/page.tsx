@@ -1,5 +1,6 @@
 import { applySuggestion } from "@/app/actions/stock";
-import { Lightbulb, Plus } from "@/components/icons";
+import Link from "next/link";
+import { ChevronRight, ClipboardCheck, Lightbulb, Plus } from "@/components/icons";
 import { EmptyState } from "@/components/empty-state";
 import { Package } from "@/components/icons";
 import { PageHeader } from "@/components/page-header";
@@ -7,6 +8,7 @@ import { getCtx } from "@/lib/ctx";
 import { addMonths, monthStart, todayISO } from "@/lib/date";
 import { qty, rupiah } from "@/lib/format";
 import { recommend, suggestMonthlyNeed } from "@/lib/shopping";
+import { agoLabel } from "@/lib/stock-check";
 import type { Item } from "@/lib/types";
 import { ItemForm } from "./item-form";
 import { StockStepper } from "./stock-stepper";
@@ -19,11 +21,11 @@ export default async function StokPage() {
   const since = addMonths(monthStart(today), -4);
 
   const [itemsRes, logsRes] = await Promise.all([
-    supabase.from("item").select("id, name, unit, monthly_need, stock, last_price, active").eq("active", true).order("name"),
+    supabase.from("item").select("id, name, unit, monthly_need, stock, last_price, active, stock_checked_at").eq("active", true).order("name"),
     supabase.from("stock_log").select("item_id, delta, created_at").eq("reason", "use").gte("created_at", `${since}T00:00:00+07:00`),
   ]);
 
-  const items = ((itemsRes.data ?? []) as Item[]).map((i) => ({
+  const items = ((itemsRes.data ?? []) as (Item & { stock_checked_at: string | null })[]).map((i) => ({
     ...i, monthly_need: Number(i.monthly_need), stock: Number(i.stock), last_price: Number(i.last_price),
   }));
   const logsBy = new Map<string, { delta: number; created_on: string }[]>();
@@ -36,6 +38,19 @@ export default async function StokPage() {
   return (
     <div className="flex flex-col gap-4">
       <PageHeader title="Stok rumah" subtitle="Tekan − saat terpakai, + saat menambah" />
+
+      {items.length > 0 && (
+        <Link href="/checklist/cek" transitionTypes={["nav-forward"]} className="card flex items-center gap-3 p-4 transition active:scale-[0.99]">
+          <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary-soft text-primary">
+            <ClipboardCheck className="h-5 w-5" aria-hidden />
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="block font-semibold">Cek stok sebelum belanja</span>
+            <span className="block text-xs text-muted">Hitung barang di rumah, checklist otomatis menyesuaikan</span>
+          </span>
+          <ChevronRight className="h-5 w-5 text-muted" aria-hidden />
+        </Link>
+      )}
 
       {items.length === 0 && (
         <EmptyState icon={<Package className="h-8 w-8" />} title="Belum ada barang">
@@ -54,7 +69,7 @@ export default async function StokPage() {
                 <div className="min-w-0">
                   <div className="truncate text-[15px] font-semibold">{i.name}</div>
                   <div className="text-xs text-muted">
-                    butuh {qty(i.monthly_need)} {i.unit}/bln{i.last_price ? ` · ${rupiah(i.last_price)}/${i.unit}` : ""}
+                    butuh {qty(i.monthly_need)} {i.unit}/periode{i.last_price ? ` · ${rupiah(i.last_price)}/${i.unit}` : ""} · {agoLabel(i.stock_checked_at, today)}
                   </div>
                 </div>
                 <StockStepper itemId={i.id} initial={i.stock} unit={i.unit} />

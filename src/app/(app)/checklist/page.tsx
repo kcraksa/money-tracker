@@ -1,11 +1,12 @@
 import Link from "next/link";
 import { createList } from "@/app/actions/shopping";
 import { EmptyState } from "@/components/empty-state";
-import { Check, ShoppingCart } from "@/components/icons";
+import { Check, ClipboardCheck, ChevronRight, ShoppingCart } from "@/components/icons";
 import { getCtx } from "@/lib/ctx";
 import { todayISO } from "@/lib/date";
 import { periodLabel } from "@/lib/period";
 import { loadPeriodContext } from "@/lib/server/period";
+import { needsStockCheck } from "@/lib/stock-check";
 import type { ListItem, ShoppingList } from "@/lib/types";
 import { ShoppingChecklist } from "./shopping-checklist";
 
@@ -17,26 +18,33 @@ export default async function ChecklistPage() {
   const month = period.start;
   const label = periodLabel(period);
 
+  const today = todayISO();
+  const { data: itemRows } = await supabase.from("item").select("stock_checked_at").eq("active", true);
+  const suggestCheck = (itemRows ?? []).length > 0 && needsStockCheck((itemRows ?? []).map((r) => r.stock_checked_at as string | null), today);
+
   const { data: list } = await supabase
     .from("shopping_list").select("id, month, status, store_id, completed_by, completed_at").eq("month", month).maybeSingle();
 
   if (!list) {
-    const { count } = await supabase.from("item").select("id", { count: "exact", head: true }).eq("active", true);
+    const count = (itemRows ?? []).length;
     return (
       <EmptyState icon={<ShoppingCart className="h-8 w-8" />} title={`Belanja ${label}`}>
-        {(count ?? 0) === 0 ? (
+        {count === 0 ? (
           <>
             <p className="max-w-xs text-sm text-muted">
               Belum ada barang. Tambahkan barang belanja bulanan dulu di tab Stok rumah.
             </p>
-            <Link href="/checklist/stok" className="btn-primary mt-1">Isi daftar barang</Link>
+            <Link href="/checklist/stok" transitionTypes={["nav-forward"]} className="btn-primary mt-1">Isi daftar barang</Link>
           </>
         ) : (
           <>
             <p className="max-w-xs text-sm text-muted">
               Checklist dibuat otomatis dari rekomendasi: kebutuhan bulanan dikurangi stok di rumah.
             </p>
-            <form action={createList}><button className="btn-primary mt-1">Buat checklist bulan ini</button></form>
+            <Link href="/checklist/cek" transitionTypes={["nav-forward"]} className="btn-primary mt-1">
+              <ClipboardCheck className="h-[18px] w-[18px]" aria-hidden /> Cek stok dulu (disarankan)
+            </Link>
+            <form action={createList}><button className="btn-ghost text-sm">Lewati, buat checklist sekarang</button></form>
           </>
         )}
       </EmptyState>
@@ -72,9 +80,18 @@ export default async function ChecklistPage() {
   for (const o of orders.data ?? []) order[o.item_id as string] = { avg: Number(o.avg_pos), samples: Number(o.samples) };
 
   return (
+    <div className="flex flex-col gap-4">
+      {suggestCheck && (
+        <Link href="/checklist/cek" transitionTypes={["nav-forward"]} className="flex items-center gap-3 rounded-2xl bg-primary-soft p-3.5 text-sm">
+          <ClipboardCheck className="h-5 w-5 shrink-0 text-primary" aria-hidden />
+          <span className="flex-1"><b>Sudah cek stok di rumah?</b> Cek dulu supaya rekomendasi belanja akurat.</span>
+          <ChevronRight className="h-4 w-4 shrink-0 text-primary" aria-hidden />
+        </Link>
+      )}
     <ShoppingChecklist
       listId={list.id} periodLabel={label} initialItems={items}
       stores={(stores.data ?? []) as { id: string; name: string }[]} storeId={storeId} order={order}
     />
+    </div>
   );
 }

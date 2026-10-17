@@ -1,23 +1,26 @@
 "use client";
 
-import Link from "next/link";
+import { useState } from "react";
 import { usePathname } from "next/navigation";
 import { Package, ShoppingCart } from "@/components/icons";
+import { Segmented } from "@/components/segmented";
+
+type Tab = "belanja" | "stok";
 
 export function ChecklistTabs() {
-  const onStock = usePathname().startsWith("/checklist/stok");
-  const tab = (active: boolean) =>
-    `flex flex-1 items-center justify-center gap-2 rounded-xl py-2.5 text-sm font-semibold transition ${
-      active ? "bg-surface text-fg shadow-card" : "text-muted"
-    }`;
+  const path = usePathname();
+  const real: Tab = path.startsWith("/checklist/stok") || path.startsWith("/checklist/cek") ? "stok" : "belanja";
+  // Penanda langsung bergeser saat disentuh; berlaku sampai pathname berubah.
+  const [tap, setTap] = useState<{ tab: Tab; from: string } | null>(null);
+  const value = tap && tap.from === path ? tap.tab : real;
+
   return (
-    <div className="flex gap-1 rounded-2xl bg-surface-2 p-1" role="tablist">
-      <Link role="tab" aria-selected={!onStock} href="/checklist" className={tab(!onStock)}>
-        <ShoppingCart className="h-4 w-4" aria-hidden /> Belanja
-      </Link>
-      <Link role="tab" aria-selected={onStock} href="/checklist/stok" className={tab(onStock)}>
-        <Package className="h-4 w-4" aria-hidden /> Stok rumah
-      </Link>
-    </div>
+    <Segmented<Tab>
+      label="Belanja atau stok" value={value} onSelect={(tab) => setTap({ tab, from: path })}
+      items={[
+        { key: "belanja", href: "/checklist", label: <><ShoppingCart className="h-4 w-4" aria-hidden /> Belanja</> },
+        { key: "stok", href: "/checklist/stok", label: <><Package className="h-4 w-4" aria-hidden /> Stok rumah</> },
+      ]}
+    />
   );
 }

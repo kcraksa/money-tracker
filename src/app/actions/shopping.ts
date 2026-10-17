@@ -6,9 +6,9 @@ import { getCtx } from "@/lib/ctx";
 import { todayISO } from "@/lib/date";
 import { XP, savingPoints } from "@/lib/gamification";
 import { learnOrder, type OrderEntry } from "@/lib/route";
-import { evaluate, lineTotal, recommend } from "@/lib/shopping";
+import { evaluate, lineTotal } from "@/lib/shopping";
 import type { ListItem } from "@/lib/types";
-import { loadPeriodContext } from "@/lib/server/period";
+import { syncListWithStock } from "@/lib/server/shopping-sync";
 import { afterActivity, award, grantBadge } from "@/lib/server/xp";
 
 const num = (v: unknown, max = 1_000_000_000) => {
@@ -16,68 +16,18 @@ const num = (v: unknown, max = 1_000_000_000) => {
   return Number.isFinite(n) ? Math.min(max, Math.max(0, Math.round(n * 100) / 100)) : 0;
 };
 
-type ItemRow = { id: string; name: string; unit: string; monthly_need: number; stock: number; last_price: number };
-
-async function activeItems(sb: Awaited<ReturnType<typeof getCtx>>["supabase"]) {
-  const { data } = await sb.from("item").select("id, name, unit, monthly_need, stock, last_price").eq("active", true);
-  return ((data ?? []) as ItemRow[]).map((i) => ({
-    ...i, monthly_need: Number(i.monthly_need), stock: Number(i.stock), last_price: Number(i.last_price),
-  }));
-}
-
 /** Checklist periode ini dibuat otomatis dari rekomendasi: max(0, kebutuhan - stok). */
 export async function createList() {
   const { supabase, me, householdId } = await getCtx();
-  const month = (await loadPeriodContext(supabase, todayISO())).period.start;
-
-  const { data: list, error } = await supabase
-    .from("shopping_list")
-    .insert({ household_id: householdId, month, created_by: me.id })
-    .select("id").single();
-  if (error || !list) redirect("/checklist"); // sudah ada (dibuat pasangan)
-
-  const rows = (await activeItems(supabase))
-    .map((i) => ({ i, rec: recommend(i.monthly_need, i.stock) }))
-    .filter((r) => r.rec > 0)
-    .map(({ i, rec }) => ({
-      household_id: householdId, list_id: list.id, item_id: i.id, name: i.name, unit: i.unit,
-      qty_recommended: rec, qty_bought: rec, unit_price_est: i.last_price,
-    }));
-  if (rows.length) await supabase.from("shopping_list_item").insert(rows);
-
+  await syncListWithStock(supabase, householdId, me.id, todayISO());
   revalidatePath("/checklist", "layout");
   redirect("/checklist");
 }
 
 /** Hitung ulang rekomendasi dari stok terbaru; barang yang sudah dicentang tidak diubah. */
-export async function refreshList(form: FormData) {
-  const { supabase, householdId } = await getCtx();
-  const listId = String(form.get("list_id"));
-  const { data: list } = await supabase.from("shopping_list").select("id, status").eq("id", listId).single();
-  if (!list || list.status !== "open") redirect("/checklist");
-
-  const { data: existing } = await supabase.from("shopping_list_item").select("*").eq("list_id", listId);
-  const rows = (existing ?? []) as ListItem[];
-  const byItem = new Map(rows.filter((r) => r.item_id).map((r) => [r.item_id as string, r]));
-
-  for (const i of await activeItems(supabase)) {
-    const rec = recommend(i.monthly_need, i.stock);
-    const row = byItem.get(i.id);
-    if (!row) {
-      if (rec > 0) {
-        await supabase.from("shopping_list_item").insert({
-          household_id: householdId, list_id: listId, item_id: i.id, name: i.name, unit: i.unit,
-          qty_recommended: rec, qty_bought: rec, unit_price_est: i.last_price,
-        });
-      }
-    } else if (!row.checked) {
-      if (rec === 0) await supabase.from("shopping_list_item").delete().eq("id", row.id);
-      else {
-        await supabase.from("shopping_list_item")
-          .update({ qty_recommended: rec, qty_bought: rec, unit_price_est: i.last_price }).eq("id", row.id);
-      }
-    }
-  }
+export async function refreshList() {
+  const { supabase, me, householdId } = await getCtx();
+  await syncListWithStock(supabase, householdId, me.id, todayISO());
   revalidatePath("/checklist", "layout");
   redirect("/checklist");
 }

@@ -4,6 +4,8 @@ import { useCallback, useEffect, useRef, useState, useTransition } from "react";
 import { logExpense, undoExpense } from "@/app/actions/expense";
 import { Check, Delete, StickyNote, Undo2, WifiOff } from "@/components/icons";
 import { PageHeader } from "@/components/page-header";
+import { Segmented } from "@/components/segmented";
+import { haptic } from "@/lib/haptics";
 import { addDays } from "@/lib/date";
 import { rupiah } from "@/lib/format";
 import { getLocal, setLocal, useLocal } from "@/lib/local-store";
@@ -73,7 +75,7 @@ export function CatatForm({
   }, [flush]);
 
   function press(key: string) {
-    navigator.vibrate?.(8);
+    haptic("tap");
     setDigits((d) => {
       if (key === "⌫") return d.slice(0, -1);
       const next = (d + key).replace(/^0+/, "");
@@ -85,7 +87,8 @@ export function CatatForm({
     start(async () => {
       try {
         const r = await logExpense(p);
-        if (!r.ok) return show({ text: r.error, tone: "warn" });
+        if (!r.ok) { haptic("warn"); return show({ text: r.error, tone: "warn" }); }
+        haptic("success");
         const bits = [`${label} ${rupiah(p.amount)}`];
         if (r.xp > 0) bits.push(`+${r.xp} XP`);
         if (r.streak > 1) bits.push(`${r.streak} hari beruntun`);
@@ -116,7 +119,7 @@ export function CatatForm({
   }
 
   function quick(q: Quick) {
-    navigator.vibrate?.(12);
+    haptic("select");
     save({ id: crypto.randomUUID(), categoryId: q.categoryId, amount: q.amount }, q.label);
   }
 
@@ -145,7 +148,7 @@ export function CatatForm({
       />
 
       {quicks.length > 0 && (
-        <div className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1" role="group" aria-label="Tombol cepat">
+        <div data-no-ptr className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1" role="group" aria-label="Tombol cepat">
           {quicks.map((q) => (
             <button
               key={q.id} onClick={() => quick(q)} disabled={pending}
@@ -164,15 +167,12 @@ export function CatatForm({
           <span className="flex items-center gap-2 text-sm font-medium text-muted">
             <span aria-hidden>{selected?.icon}</span> {selected?.name ?? "Pilih kategori"}
           </span>
-          <div className="flex rounded-full bg-surface-2 p-0.5 text-xs font-semibold" role="group" aria-label="Tanggal">
-            {[false, true].map((y) => (
-              <button
-                key={String(y)} onClick={() => setYesterday(y)} aria-pressed={yesterday === y}
-                className={`min-h-8 rounded-full px-3 transition ${yesterday === y ? "bg-surface text-fg shadow-card" : "text-muted"}`}
-              >
-                {y ? "Kemarin" : "Hari ini"}
-              </button>
-            ))}
+          <div className="w-44">
+            <Segmented<"today" | "yesterday">
+              label="Tanggal" size="sm" value={yesterday ? "yesterday" : "today"}
+              onSelect={(k) => setYesterday(k === "yesterday")}
+              items={[{ key: "today", label: "Hari ini" }, { key: "yesterday", label: "Kemarin" }]}
+            />
           </div>
         </div>
         <output
@@ -183,7 +183,7 @@ export function CatatForm({
         </output>
         {showNote ? (
           <input
-            className="input min-h-10 text-sm" placeholder="Catatan (opsional)" maxLength={80} autoFocus
+            className="input min-h-11" placeholder="Catatan (opsional)" maxLength={80} autoFocus
             value={note} onChange={(e) => setNote(e.target.value)}
           />
         ) : (

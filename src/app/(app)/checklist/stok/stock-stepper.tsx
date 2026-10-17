@@ -4,6 +4,7 @@ import { useState } from "react";
 import { adjustStock } from "@/app/actions/stock";
 import { Minus, Plus } from "@/components/icons";
 import { qty } from "@/lib/format";
+import { haptic } from "@/lib/haptics";
 
 export function StockStepper({ itemId, initial, unit }: { itemId: string; initial: number; unit: string }) {
   const [stock, setStock] = useState(initial);
@@ -15,12 +16,18 @@ export function StockStepper({ itemId, initial, unit }: { itemId: string; initia
   }
 
   async function step(delta: number) {
-    navigator.vibrate?.(8);
+    haptic("tap");
     const prev = stock;
     setStock(Math.max(0, Math.round((stock + delta) * 100) / 100)); // langsung terasa, tanpa menunggu server
-    const r = await adjustStock(itemId, delta);
-    if (r.stock !== undefined) setStock(r.stock);
-    else setStock(prev);
+    try {
+      const r = await adjustStock(itemId, delta);
+      if (r.stock !== undefined) setStock(r.stock);
+      else setStock(prev);
+    } catch {
+      // Tanpa sinyal: kembalikan angka supaya layar tidak berbohong soal stok.
+      haptic("warn");
+      setStock(prev);
+    }
   }
 
   return (
@@ -30,7 +37,7 @@ export function StockStepper({ itemId, initial, unit }: { itemId: string; initia
         <Minus className="h-5 w-5" aria-hidden />
       </button>
       <div className="w-14 text-center leading-tight">
-        <div className="text-lg font-bold tabular-nums">{qty(stock)}</div>
+        <div key={stock} className="animate-tick text-lg font-bold tabular-nums">{qty(stock)}</div>
         <div className="text-[10px] text-muted">{unit}</div>
       </div>
       <button onClick={() => step(1)} aria-label="Tambah stok"

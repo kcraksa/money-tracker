@@ -12,12 +12,15 @@ plus checklist belanja bulanan berbasis stok, forecast budget, dan gamifikasi ri
 | **Catat** | Keypad besar, kategori satu tap, tombol cepat (mis. Bensin 50rb), tanggal otomatis, pencatat otomatis, Urungkan, antrean offline |
 | **Beranda** | Level & XP keluarga, streak, ringkasan periode (pemasukan, dialokasikan, belum dibagi), sisa anggaran + forecast akhir periode, tagihan tetap (lunas/belum), quest minggu ini |
 | **Rencana gajian** | Catat pemasukan, bagi ke tiap pos dengan penghitung "belum dialokasikan" langsung, tambah/arsipkan pos (mis. Makan) |
+| **Cek stok** | Sebelum belanja, hitung barang di rumah (− / + / ketik angka / "Habis"), lalu checklist otomatis diperbarui. Penurunan stok tercatat sebagai pemakaian nyata |
 | **Checklist** | Dibuat otomatis dari rekomendasi `max(0, kebutuhan − stok)`. Pilih toko, urutan mengikuti rak toko itu. Centang barang, isi harga per satuan (sesuai rak), total dihitung otomatis |
 | **Stok rumah** | Stok diubah dengan tombol **+ / −**. Perkiraan pemakaian dihitung ulang dari pemakaian nyata beberapa bulan terakhir |
 | **Evaluasi** | Rekomendasi vs dibeli, barang di luar daftar, uang yang dihemat |
 | **Pencapaian** | Badge, quest, papan kontribusi dua jalur (rajin mencatat vs hemat) |
 
-Tema terang/gelap (otomatis + tombol), mobile-first.
+Tema terang/gelap (otomatis + tombol), mobile-first, dan dirancang terasa seperti aplikasi native:
+transisi halaman (View Transitions), bottom sheet yang bisa diseret, pull-to-refresh, daftar yang berpindah dengan animasi,
+getaran halus (Android), dan perubahan di toko tetap aman saat sinyal hilang (antrean kirim ulang otomatis).
 
 ### Periode gajian
 
@@ -74,7 +77,8 @@ Perintah lain: `npm test` (logika + skema SQL/RLS di Postgres nyata via pglite),
 1. Buat project di <https://supabase.com> (region **Singapore / ap-southeast-1** supaya dekat).
 2. **SQL Editor** → New query → jalankan berurutan:
    [`0001_init.sql`](supabase/migrations/0001_init.sql), lalu
-   [`0002_period_income_store.sql`](supabase/migrations/0002_period_income_store.sql) (periode gajian, pemasukan, toko & urutan rak).
+   [`0002_period_income_store.sql`](supabase/migrations/0002_period_income_store.sql) (periode gajian, pemasukan, toko & urutan rak), lalu
+   [`0003_stock_check.sql`](supabase/migrations/0003_stock_check.sql) (waktu cek stok).
    (Atau dengan CLI: `supabase link` lalu `supabase db push`, yang menjalankan keduanya.)
 3. **Project Settings → API**: salin **Project URL** dan **anon public key**. Keduanya aman berada di browser,
    karena keamanan data dijaga Row Level Security per rumah tangga.
@@ -82,7 +86,19 @@ Perintah lain: `npm test` (logika + skema SQL/RLS di Postgres nyata via pglite),
    - *Site URL*: URL produksi (mis. `https://catatan-kita.vercel.app`; di lokal `http://localhost:3000`).
    - *Redirect URLs*: tambahkan `https://<domain-kamu>/auth/confirm` dan `http://localhost:3000/auth/confirm`
      (untuk preview Vercel: `https://*-<tim-kamu>.vercel.app/auth/confirm`).
-5. **Authentication → Emails → Templates**: edit **Magic Link** *dan* **Confirm signup** (pengguna baru memakai yang
+5. **Login dengan Google (disarankan)**: tidak mengirim email, jadi bebas dari batas pengiriman email Supabase.
+   1. [Google Cloud Console](https://console.cloud.google.com/) → pilih/buat project → **APIs & Services → OAuth consent screen**
+      (User type *External*, isi nama aplikasi dan email, lalu **Publish app** agar semua akun Google bisa masuk).
+   2. **Credentials → Create credentials → OAuth client ID** → tipe **Web application**.
+      - *Authorized JavaScript origins*: URL aplikasi (mis. `https://catatan-kita.vercel.app`) dan `http://localhost:3000`.
+      - *Authorized redirect URIs*: `https://<project-ref>.supabase.co/auth/v1/callback`
+        (alamat persisnya tertera di Supabase pada halaman provider Google).
+   3. Salin **Client ID** dan **Client secret**.
+   4. Supabase → **Authentication → Providers → Google** → aktifkan, tempel Client ID & secret, simpan.
+   5. Pastikan *Redirect URLs* (langkah 4) memuat `https://<domain-kamu>/auth/confirm`.
+
+   Email tetap tersedia sebagai cadangan di halaman login. Kalau mau tanpa email sama sekali, tidak perlu mengatur template di bawah.
+6. **Authentication → Emails → Templates** (hanya bila memakai login email): edit **Magic Link** *dan* **Confirm signup** (pengguna baru memakai yang
    kedua) agar link bekerja lintas browser dan ada kode 6 digit:
 
    ```html
@@ -94,7 +110,7 @@ Perintah lain: `npm test` (logika + skema SQL/RLS di Postgres nyata via pglite),
    Isi yang sama dipakai di kedua template (aplikasi otomatis mencoba tipe token yang sesuai).
    Kode 6 digit penting kalau aplikasi sudah dipasang di layar utama iPhone: link dari email sering terbuka di Safari
    biasa, bukan di aplikasi, jadi memasukkan kode di aplikasi adalah cara paling mulus.
-6. *(Disarankan)* **Project Settings → Auth → SMTP**: pasang SMTP sendiri (Resend, Brevo, dll.).
+7. *(Opsional, hanya untuk login email)* **Project Settings → Auth → SMTP**: pasang SMTP sendiri (Resend, Brevo, dll.).
    Email bawaan Supabase dibatasi hanya beberapa email per jam, cukup untuk uji coba tapi bisa menghambat login.
 
 ## 2. Environment variable
@@ -118,10 +134,10 @@ Kalau variabel belum diisi, aplikasi menampilkan halaman `/setup`.
 
 ### Pertama kali dipakai
 
-1. Buka URL → masukkan email → klik link / masukkan kode → **Buat rumah tangga** → catat **kode undangan**.
+1. Buka URL → **Lanjutkan dengan Google** → **Buat rumah tangga** → catat **kode undangan**.
 2. Buka **Rencana gajian** (dari Beranda atau Pengaturan): catat gajian, lalu bagi ke tiap pos (belanja bulanan, makan, bensin, tagihan, dst.). Di **Pengaturan** atur tombol cepat.
-3. Istri membuka URL yang sama, login dengan emailnya, pilih **Gabung pakai kode**.
-4. Di **Checklist → Stok rumah** tambahkan barang belanja bulanan (satuan & harga per satuan sesuai rak), lalu buat checklist bulan ini.
+3. Istri membuka URL yang sama, login dengan akun Google-nya, pilih **Gabung pakai kode**.
+4. Di **Checklist → Stok rumah** tambahkan barang belanja bulanan (satuan & harga per satuan sesuai rak). Sebelum belanja, tekan **Cek stok**, lalu belanja mengikuti checklist.
 5. Pasang di HP: Android Chrome → menu ⋮ → *Install app*; iPhone Safari → Bagikan → *Tambah ke Layar Utama*.
 
 ## Struktur proyek

@@ -124,6 +124,13 @@ button, a, summary { touch-action: manipulation; }
 button { cursor: pointer; }
 button:disabled { cursor: not-allowed; }
 
+/* Terasa native: kontrol tidak ikut terseleksi/tertahan saat disentuh lama. */
+button, a, nav, summary, [role="tab"], [role="checkbox"] {
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+
 :focus-visible {
   outline: 2px solid var(--primary);
   outline-offset: 2px;
@@ -132,7 +139,27 @@ button:disabled { cursor: not-allowed; }
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+  ::view-transition-old(*), ::view-transition-new(*), ::view-transition-group(*) {
+    animation-duration: 0s !important;
+    animation-delay: 0s !important;
+  }
 }
+
+/* ───────── Transisi antar halaman (View Transitions) ───────── */
+:root { --ease-out: cubic-bezier(0.2, 0.8, 0.2, 1); }
+::view-transition { pointer-events: none; }
+
+::view-transition-old(.page-out) { animation: 120ms ease-out both vt-fade reverse; }
+::view-transition-new(.page-in) { animation: 240ms var(--ease-out) 40ms both vt-rise; }
+
+::view-transition-old(.nav-forward) { --dx: -48px; animation: 140ms ease-in both vt-fade reverse, 320ms var(--ease-out) both vt-slide reverse; }
+::view-transition-new(.nav-forward) { --dx: 48px; animation: 220ms ease-out 60ms both vt-fade, 360ms var(--ease-out) both vt-slide; }
+::view-transition-old(.nav-back) { --dx: 48px; animation: 140ms ease-in both vt-fade reverse, 320ms var(--ease-out) both vt-slide reverse; }
+::view-transition-new(.nav-back) { --dx: -48px; animation: 220ms ease-out 60ms both vt-fade, 360ms var(--ease-out) both vt-slide; }
+
+@keyframes vt-fade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes vt-rise { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+@keyframes vt-slide { from { translate: var(--dx) 0; } to { translate: 0 0; } }
 
 /* ───────── Komponen ───────── */
 @utility card {
@@ -174,4 +201,34 @@ button:disabled { cursor: not-allowed; }
 }
 @utility animate-pop {
   animation: pop-in 0.22s ease-out both;
+}
+
+/* ───────── Gerak mikro ───────── */
+@keyframes tick {
+  0% { transform: scale(1.18); }
+  100% { transform: scale(1); }
+}
+@utility animate-tick {
+  animation: tick 0.22s var(--ease-out) both;
+}
+
+@keyframes sheet-up {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
+@keyframes sheet-down {
+  from { transform: translateY(var(--drag, 0px)); }
+  to { transform: translateY(100%); }
+}
+@keyframes backdrop-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes backdrop-out { from { opacity: 1; } to { opacity: 0; } }
+@utility animate-sheet-up { animation: sheet-up 0.34s var(--ease-out) both; }
+@utility animate-sheet-down { animation: sheet-down 0.26s cubic-bezier(0.4, 0, 1, 1) both; }
+@utility animate-backdrop-in { animation: backdrop-in 0.25s ease-out both; }
+@utility animate-backdrop-out { animation: backdrop-out 0.25s ease-in both; }
+
+/* Segmented control: penanda bergeser mulus. */
+@utility seg-thumb {
+  @apply absolute inset-y-1 left-1 rounded-xl bg-surface shadow-card transition-transform duration-300;
+  transition-timing-function: var(--ease-out);
 }

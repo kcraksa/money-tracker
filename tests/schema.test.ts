@@ -26,7 +26,7 @@ beforeAll(async () => {
     grant usage on schema public to authenticated;
     insert into auth.users values ('${A}'), ('${B}'), ('${C}');
   `);
-  for (const f of ["0001_init.sql", "0002_period_income_store.sql"]) {
+  for (const f of ["0001_init.sql", "0002_period_income_store.sql", "0003_stock_check.sql"]) {
     await db.exec(readFileSync(`supabase/migrations/${f}`, "utf8"));
   }
   await db.exec(`
@@ -193,5 +193,20 @@ describe("skema & RLS", () => {
     await as(C);
     expect((await db.query("select * from store")).rows).toHaveLength(0);
     expect((await db.query("select * from store_item_order")).rows).toHaveLength(0);
+  });
+
+  it("cek stok: penurunan tercatat sebagai pemakaian, waktu cek tersimpan", async () => {
+    await as(A);
+    const it = (await db.query<{ id: string }>("select id from item where name = 'Sabun'")).rows[0];
+    await db.query("select adjust_stock($1, 3, 'adjust')", [it.id]);
+    await db.query("select adjust_stock($1, -2, 'use')", [it.id]);
+    await db.query("update item set stock_checked_at = now() where id = $1", [it.id]);
+    const row = (await db.query<{ stock: string; stock_checked_at: string | null }>(
+      "select stock, stock_checked_at from item where id = $1", [it.id],
+    )).rows[0];
+    expect(Number(row.stock)).toBe(1);
+    expect(row.stock_checked_at).not.toBeNull();
+    const uses = await db.query("select * from stock_log where item_id = $1 and reason = 'use'", [it.id]);
+    expect(uses.rows.length).toBeGreaterThan(0);
   });
 });
