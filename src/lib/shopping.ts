@@ -8,6 +8,15 @@ export function recommend(monthlyNeed: number, stock: number): number {
   return round2(Math.max(0, monthlyNeed - stock));
 }
 
+/** Barang yang memang perlu dibeli periode ini. Baris stok-cukup (rekomendasi 0) hanya info, tetap bisa dibeli. */
+export const isPlanned = (i: Pick<ListItem, "is_extra" | "qty_recommended">) => !i.is_extra && i.qty_recommended > 0;
+
+/** Cocokkan nama barang dengan kata kunci pencarian (abaikan huruf besar/kecil dan spasi tepi). */
+export const matchesQuery = (name: string, query: string) => {
+  const q = query.trim().toLowerCase();
+  return q === "" || name.toLowerCase().includes(q);
+};
+
 export const lineTotal = (qty: number, unitPrice: number) => Math.round(qty * unitPrice);
 
 /**
@@ -56,8 +65,8 @@ export type Evaluation = {
  * Barang di luar daftar tidak pernah menambah hemat.
  */
 export function evaluate(items: ListItem[]): Evaluation {
-  const planned = items.filter((i) => !i.is_extra);
-  const extras = items.filter((i) => i.is_extra && i.checked);
+  const planned = items.filter(isPlanned);
+  const extras = items.filter((i) => !isPlanned(i) && i.checked);
   const bought = items.filter((i) => i.checked);
 
   const estimateTotal = planned.reduce((s, i) => s + lineTotal(i.qty_recommended, i.unit_price_est), 0);

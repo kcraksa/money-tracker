@@ -22,7 +22,7 @@ export default async function ChecklistPage() {
   const label = periodLabel(period);
 
   const today = todayISO();
-  const itemsRes = await loadActiveItems<{ id: string }>(supabase, "id");
+  const itemsRes = await loadActiveItems<{ id: string; stock: number }>(supabase, "id, stock");
   const itemRows = itemsRes.rows;
   // Saat database belum diperbarui, jangan terus-menerus menyarankan cek stok.
   const suggestCheck = itemRows.length > 0 && !itemsRes.outdated && needsStockCheck(itemRows.map((r) => r.stock_checked_at), today);
@@ -87,6 +87,9 @@ export default async function ChecklistPage() {
   const order: Record<string, { avg: number; samples: number }> = {};
   for (const o of orders.data ?? []) order[o.item_id as string] = { avg: Number(o.avg_pos), samples: Number(o.samples) };
 
+  const stocks: Record<string, number> = {};
+  for (const r of itemRows) stocks[r.id] = Number(r.stock);
+
   return (
     <div className="flex flex-col gap-4">
       <DataNotice outdated={itemsRes.outdated} error={itemsRes.error} />
@@ -99,7 +102,7 @@ export default async function ChecklistPage() {
       )}
     <ShoppingChecklist
       listId={list.id} periodLabel={label} initialItems={items}
-      stores={(stores.data ?? []) as { id: string; name: string }[]} storeId={storeId} order={order}
+      stores={(stores.data ?? []) as { id: string; name: string }[]} storeId={storeId} order={order} stocks={stocks}
     />
     </div>
   );

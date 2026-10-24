@@ -11,7 +11,7 @@ import { byUrgency, checkKm, dueText, kmNudge, kmPerDay, partStatus, summarize, 
 import { TEMPLATES } from "./service/templates";
 import { forecast } from "./forecast";
 import { BADGES, computeStreak, levelInfo, questProgress, savingPoints } from "./gamification";
-import { evaluate, recommend, suggestMonthlyNeed } from "./shopping";
+import { evaluate, isPlanned, matchesQuery, recommend, suggestMonthlyNeed } from "./shopping";
 import { qty, rupiah } from "./format";
 import type { ListItem } from "./types";
 
@@ -205,6 +205,26 @@ describe("evaluasi belanja", () => {
     expect(e.saving).toBe(0);
     expect(e.notBought).toHaveLength(1);
     expect(e.withinRecommendation).toBe(false);
+  });
+  it("stok cukup yang tetap dibeli = di luar rekomendasi: tidak dihitung rencana, hemat, atau belum terbeli", () => {
+    const spare = li({ qty_recommended: 0, qty_bought: 1, checked: false, unit_price_est: 5000, unit_price_actual: 0 });
+    expect(isPlanned(spare)).toBe(false);
+    const idle = evaluate([li({ unit_price_est: 10000, unit_price_actual: 9000 }), spare]);
+    expect(idle.notBought).toHaveLength(0); // baris info yang tidak dibeli bukan "belum terbeli"
+    expect(idle.withinRecommendation).toBe(true);
+
+    const bought = evaluate([
+      li({ unit_price_est: 10000, unit_price_actual: 10000 }),
+      { ...spare, checked: true, unit_price_actual: 5000 },
+    ]);
+    expect(bought.extrasTotal).toBe(5000);
+    expect(bought.recommendedActual).toBe(10000);
+    expect(bought.saving).toBe(0);
+  });
+  it("pencarian barang: abaikan huruf besar dan spasi tepi", () => {
+    expect(matchesQuery("Minyak Goreng 2L", "  minyak ")).toBe(true);
+    expect(matchesQuery("Minyak Goreng 2L", "")).toBe(true);
+    expect(matchesQuery("Minyak Goreng 2L", "beras")).toBe(false);
   });
   it("barang di luar daftar dipisah dan bisa menggagalkan bonus", () => {
     const e = evaluate([
