@@ -4,14 +4,14 @@ import { SubmitButton } from "@/components/submit-button";
 import { Spinner } from "@/components/spinner";
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { addExtra, addStore, finishList, refreshList, removeListItem, setListStore, updateListItem } from "@/app/actions/shopping";
-import { Check, Minus, Plus, RefreshCw, Route, Store, WifiOff, X } from "@/components/icons";
+import { Check, Minus, Plus, RefreshCw, Route, Search, Store, WifiOff, X } from "@/components/icons";
 import { PageHeader } from "@/components/page-header";
 import { Sheet } from "@/components/sheet";
 import { ProgressBar } from "@/components/progress-bar";
 import { qty as fmtQty, rupiah } from "@/lib/format";
 import { haptic } from "@/lib/haptics";
 import { sortByRoute, type OrderEntry } from "@/lib/route";
-import { lineTotal } from "@/lib/shopping";
+import { isPlanned, lineTotal, matchesQuery } from "@/lib/shopping";
 import type { ListItem } from "@/lib/types";
 import { useFlip } from "@/lib/use-flip";
 
@@ -23,14 +23,17 @@ type Props = {
   stores: Store[];
   storeId: string | null;
   order: Record<string, OrderEntry>;
+  /** Stok rumah saat ini per barang (item_id), untuk info di baris yang stoknya masih cukup. */
+  stocks: Record<string, number>;
 };
 
-export function ShoppingChecklist({ listId, periodLabel, initialItems, stores, storeId: initialStore, order }: Props) {
+export function ShoppingChecklist({ listId, periodLabel, initialItems, stores, storeId: initialStore, order, stocks }: Props) {
   const [items, setItems] = useState(initialItems);
   const [storeId, setStoreId] = useState(initialStore);
   const [showExtra, setShowExtra] = useState(false);
   const [showStore, setShowStore] = useState(false);
   const [showFinish, setShowFinish] = useState(false);
+  const [query, setQuery] = useState("");
   const listRef = useFlip<HTMLUListElement>();
 
   // Perubahan dikirim ke server di latar belakang. Kalau sinyal hilang (sering terjadi di toko),
@@ -89,17 +92,19 @@ export function ShoppingChecklist({ listId, periodLabel, initialItems, stores, s
     () => new Map(items.map((i) => [i.id, i.checked_at ? Date.parse(i.checked_at) : 0])),
     [items],
   );
+  // Stok masih cukup & belum dicentang: ditampilkan terpisah di bawah sebagai info, tetap bisa dicentang.
   const routed = useMemo(() => {
     const original = new Map(items.map((i) => [i.id, i.checked]));
-    const sortable = items.map((i) => (i.id === activeId ? { ...i, checked: false } : i));
+    const sortable = items.filter((i) => !isSpare(i, activeId)).map((i) => (i.id === activeId ? { ...i, checked: false } : i));
     return sortByRoute(sortable, storeId ? orderMap : new Map(), checkedAt).map((r) => ({
       ...r, checked: original.get(r.id) ?? r.checked, sunk: Boolean(original.get(r.id)) && r.id !== activeId,
     }));
   }, [items, orderMap, checkedAt, storeId, activeId]);
+  const spare = items.filter((i) => isSpare(i, activeId));
   const trips = Math.max(0, ...[...orderMap.values()].map((o) => o.samples));
   const store = stores.find((s) => s.id === storeId);
 
-  const planned = items.filter((i) => !i.is_extra);
+  const planned = items.filter(isPlanned);
   const estimate = planned.reduce((s, i) => s + lineTotal(i.qty_recommended, i.unit_price_est), 0);
   const actual = items.filter((i) => i.checked).reduce((s, i) => s + lineTotal(i.qty_bought, i.unit_price_actual), 0);
   const doneCount = planned.filter((i) => i.checked).length;
@@ -116,9 +121,13 @@ export function ShoppingChecklist({ listId, periodLabel, initialItems, stores, s
   }
 
   // Penanda bagian: rute toko / posisi belum diketahui / sudah di keranjang.
-  const firstUnknown = storeId ? routed.findIndex((i) => !i.sunk && !i.known) : -1;
-  const firstChecked = routed.findIndex((i) => i.sunk);
-  const hasKnownOpen = routed.some((i) => !i.sunk && i.known);
+  const searching = query.trim() !== "";
+  const shown = searching ? routed.filter((i) => matchesQuery(i.name, query)) : routed;
+  const spareShown = searching ? spare.filter((i) => matchesQuery(i.name, query)) : spare;
+
+  const firstUnknown = storeId ? shown.findIndex((i) => !i.sunk && !i.known) : -1;
+  const firstChecked = shown.findIndex((i) => i.sunk);
+  const hasKnownOpen = shown.some((i) => !i.sunk && i.known);
 
   return (
     <div className="flex flex-col gap-4">
@@ -183,22 +192,37 @@ export function ShoppingChecklist({ listId, periodLabel, initialItems, stores, s
         <div className="text-xs text-muted">{doneCount} dari {planned.length} barang dicentang</div>
       </section>
 
-      {planned.length === 0 && (
+      <div className="relative">
+        <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" aria-hidden />
+        <input
+          type="search" value={query} onChange={(e) => setQuery(e.target.value)} enterKeyHint="search"
+          className="input pl-10" placeholder="Cari barang di daftar belanja" aria-label="Cari barang"
+        />
+      </div>
+
+      {planned.length === 0 && !searching && (
         <p className="card text-center text-sm text-muted">Stok masih cukup, tidak ada yang perlu dibeli periode ini. 🎉</p>
+      )}
+      {searching && shown.length === 0 && spareShown.length === 0 && (
+        <p className="card text-center text-sm text-muted">Tidak ada barang “{query.trim()}” di daftar. Mau beli? Tambahkan di bawah.</p>
       )}
 
       <ul ref={listRef} className="flex flex-col gap-2.5">
-        {routed.map((it, idx) => (
+        {shown.map((it, idx) => (
           <Fragment key={it.id}>
             {idx === firstUnknown && hasKnownOpen && <Divider>Posisi belum diketahui di toko ini</Divider>}
             {idx === firstChecked && <Divider>Sudah di keranjang</Divider>}
-            <Row item={it} onChange={(p) => patch(it.id, p)} save={(p) => save(it.id, p)} />
+            <Row item={it} stock={it.item_id ? stocks[it.item_id] : undefined} onChange={(p) => patch(it.id, p)} save={(p) => save(it.id, p)} />
           </Fragment>
+        ))}
+        {spareShown.length > 0 && <Divider>Stok masih ada · tetap bisa dibeli</Divider>}
+        {spareShown.map((it) => (
+          <Row key={it.id} item={it} stock={it.item_id ? stocks[it.item_id] : undefined} onChange={(p) => patch(it.id, p)} save={(p) => save(it.id, p)} />
         ))}
       </ul>
 
       <button className="btn-soft border-dashed" onClick={() => setShowExtra(true)}>
-        <Plus className="h-4 w-4" aria-hidden /> Barang di luar daftar
+        <Plus className="h-4 w-4" aria-hidden /> Beli barang di luar daftar
       </button>
 
       <div className="grid grid-cols-[auto_1fr] gap-2">
@@ -227,10 +251,15 @@ export function ShoppingChecklist({ listId, periodLabel, initialItems, stores, s
       <Sheet open={showExtra} onClose={() => setShowExtra(false)} title="Barang di luar daftar">
         <form action={async (fd) => { await addExtra(fd); setShowExtra(false); }} className="grid grid-cols-6 gap-2 pb-2">
           <input type="hidden" name="list_id" value={listId} />
-          <input name="name" required autoFocus className="input col-span-6" placeholder="Nama barang" aria-label="Nama barang" enterKeyHint="next" />
+          <input name="name" required autoFocus defaultValue={query.trim()} className="input col-span-6" placeholder="Nama barang" aria-label="Nama barang" enterKeyHint="next" />
           <input name="qty" inputMode="decimal" className="input col-span-2" placeholder="Jml" defaultValue="1" aria-label="Jumlah" />
           <input name="unit" className="input col-span-2" placeholder="pcs" aria-label="Satuan" />
           <input name="price" inputMode="numeric" className="input col-span-2" placeholder="Harga" aria-label="Harga per satuan" enterKeyHint="done" />
+          <label className="col-span-6 flex items-center gap-2.5 text-sm text-muted">
+            <input type="checkbox" name="save_item" defaultChecked className="h-5 w-5 accent-[var(--color-primary)]" />
+            Simpan ke daftar barang (stok ikut tercatat)
+          </label>
+          <p className="col-span-6 text-xs text-muted">Kalau namanya sudah ada di daftar barang rumah, stok dan harga terakhirnya ikut diperbarui.</p>
           <SubmitButton pendingLabel="Menambah…" className="btn-primary col-span-6">Tambah ke keranjang</SubmitButton>
         </form>
       </Sheet>
@@ -242,9 +271,9 @@ export function ShoppingChecklist({ listId, periodLabel, initialItems, stores, s
             <div className="flex justify-between"><dt className="text-muted">Estimasi</dt><dd className="font-semibold tabular-nums">{rupiah(estimate)}</dd></div>
             <div className="flex justify-between"><dt className="text-muted">Terbelanja</dt><dd className={`font-bold tabular-nums ${over ? "text-danger" : "text-ok"}`}>{rupiah(actual)}</dd></div>
           </dl>
-          {items.some((i) => !i.checked && !i.is_extra) && (
+          {items.some((i) => !i.checked && isPlanned(i)) && (
             <p className="rounded-2xl bg-warn-bg p-3 text-sm text-warn">
-              {items.filter((i) => !i.checked && !i.is_extra).length} barang belum dicentang dan tidak akan masuk ke stok.
+              {items.filter((i) => !i.checked && isPlanned(i)).length} barang belum dicentang dan tidak akan masuk ke stok.
             </p>
           )}
           <p className="text-sm text-muted">Stok bertambah sesuai yang dibeli dan {rupiah(actual)} dicatat sebagai pengeluaran.</p>
@@ -259,6 +288,10 @@ export function ShoppingChecklist({ listId, periodLabel, initialItems, stores, s
   );
 }
 
+/** Stok masih cukup (rekomendasi 0) dan belum dicentang. Barang yang baru dicentang tetap di tempatnya. */
+const isSpare = (i: ListItem, activeId: string | null) =>
+  !i.is_extra && i.qty_recommended === 0 && !i.checked && i.id !== activeId;
+
 function Divider({ children }: { children: React.ReactNode }) {
   return (
     <li role="presentation" className="flex items-center gap-3 pt-1 text-[11px] font-semibold uppercase tracking-wider text-muted">
@@ -268,8 +301,8 @@ function Divider({ children }: { children: React.ReactNode }) {
 }
 
 function Row({
-  item, onChange, save,
-}: { item: ListItem; onChange: (p: Partial<ListItem>) => void; save: (p: { checked?: boolean; qty_bought?: number; unit_price_actual?: number }) => void }) {
+  item, stock, onChange, save,
+}: { item: ListItem; stock?: number; onChange: (p: Partial<ListItem>) => void; save: (p: { checked?: boolean; qty_bought?: number; unit_price_actual?: number }) => void }) {
   const [price, setPrice] = useState(item.unit_price_actual ? String(item.unit_price_actual) : "");
   const [seenPrice, setSeenPrice] = useState(item.unit_price_actual);
   if (seenPrice !== item.unit_price_actual) {
@@ -317,7 +350,9 @@ function Row({
           <div className="text-xs text-muted">
             {item.is_extra
               ? "Di luar daftar"
-              : `Beli ${fmtQty(item.qty_recommended)} ${item.unit}${item.unit_price_est ? ` · est. ${rupiah(item.unit_price_est)}/${item.unit}` : ""}`}
+              : item.qty_recommended === 0
+                ? `Stok masih ${stock !== undefined ? `${fmtQty(stock)} ${item.unit}` : "ada"} · cukup bulan ini`
+                : `Beli ${fmtQty(item.qty_recommended)} ${item.unit}${item.unit_price_est ? ` · est. ${rupiah(item.unit_price_est)}/${item.unit}` : ""}`}
           </div>
         </div>
         {item.is_extra && (

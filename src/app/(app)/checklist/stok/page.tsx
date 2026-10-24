@@ -13,6 +13,7 @@ import { recommend, suggestMonthlyNeed } from "@/lib/shopping";
 import { agoLabel } from "@/lib/stock-check";
 import type { Item } from "@/lib/types";
 import { ItemForm } from "./item-form";
+import { StockSearch } from "./stock-search";
 import { StockStepper } from "./stock-stepper";
 import { SubmitButton } from "@/components/submit-button";
 
@@ -63,13 +64,15 @@ export default async function StokPage() {
         </EmptyState>
       )}
 
-      <ul className="flex flex-col gap-2.5">
+      {items.length > 3 && <StockSearch listId="stok-list" />}
+
+      <ul id="stok-list" className="flex flex-col gap-2.5">
         {items.map((i) => {
           const rec = recommend(i.monthly_need, i.stock);
           const sug = suggestMonthlyNeed(logsBy.get(i.id) ?? [], today);
           const differs = sug && sug.suggested !== i.monthly_need;
           return (
-            <li key={i.id} className="card flex flex-col gap-3 p-3.5">
+            <li key={i.id} data-name={i.name} className="card flex flex-col gap-3 p-3.5">
               <div className="flex items-center justify-between gap-3">
                 <div className="min-w-0">
                   <div className="truncate text-[15px] font-semibold">{i.name}</div>

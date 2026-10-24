@@ -49,21 +49,37 @@ export async function updateListItem(
   return { ok: !error };
 }
 
+/**
+ * Beli barang yang tidak ada di daftar. Bila namanya cocok dengan barang di daftar barang rumah
+ * (termasuk yang diarsipkan), barisnya ditautkan supaya stok dan harga terakhir ikut diperbarui.
+ * Kalau benar-benar baru dan `save_item` aktif, barang disimpan ke daftar barang (kebutuhan 0).
+ */
 export async function addExtra(form: FormData): Promise<{ ok: boolean }> {
   const { supabase, householdId } = await getCtx();
   const listId = String(form.get("list_id"));
-  const name = String(form.get("name") ?? "").trim();
-  if (name) {
-    await supabase.from("shopping_list_item").insert({
-      household_id: householdId, list_id: listId, name,
-      unit: String(form.get("unit") ?? "").trim() || "pcs",
-      qty_recommended: 0, qty_bought: num(form.get("qty") || 1, 100000),
-      unit_price_actual: Math.round(num(String(form.get("price") ?? "").replace(/\D/g, ""))),
-      checked: true, is_extra: true, checked_at: new Date().toISOString(),
-    });
+  const name = String(form.get("name") ?? "").trim().slice(0, 80);
+  if (!name) return { ok: false };
+
+  const unitIn = String(form.get("unit") ?? "").trim().slice(0, 20);
+  const price = Math.round(num(String(form.get("price") ?? "").replace(/\D/g, "")));
+  const { data: found } = await supabase.from("item").select("id, unit, last_price").ilike("name", name).limit(1).maybeSingle();
+
+  let itemId: string | null = found?.id ?? null;
+  const unit = unitIn || found?.unit || "pcs";
+  if (!itemId && form.get("save_item")) {
+    const ins = await supabase.from("item")
+      .insert({ household_id: householdId, name, unit, monthly_need: 0, last_price: price }).select("id").single();
+    itemId = ins.data?.id ?? null;
   }
+
+  const { error } = await supabase.from("shopping_list_item").insert({
+    household_id: householdId, list_id: listId, item_id: itemId, name, unit,
+    qty_recommended: 0, qty_bought: num(form.get("qty") || 1, 100000),
+    unit_price_actual: price || Number(found?.last_price ?? 0),
+    checked: true, is_extra: true, checked_at: new Date().toISOString(),
+  });
   revalidatePath("/checklist", "layout");
-  return { ok: true };
+  return { ok: !error };
 }
 
 export async function removeListItem(form: FormData) {
