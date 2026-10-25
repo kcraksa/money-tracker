@@ -23,7 +23,7 @@ export function VehicleCard({ o }: { o: VehicleOverview }) {
         <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-accent-soft text-2xl" aria-hidden>{KIND_ICON[vehicle.kind]}</span>
         <div className="min-w-0 flex-1">
           <h3 className="truncate text-lg font-bold tracking-tight">{vehicle.name}</h3>
-          <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted">
+          <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-muted">
             <span>{vehicle.plate || (vehicle.kind === "car" ? "Mobil" : "Motor")}</span>
             <StatusPill summary={summary} />
           </div>
@@ -35,7 +35,7 @@ export function VehicleCard({ o }: { o: VehicleOverview }) {
         <Gauge className="h-5 w-5 shrink-0 text-muted" aria-hidden />
         <div className="min-w-0 flex-1">
           <div className="text-xl font-extrabold tabular-nums leading-tight">{kmText(vehicle.odometer_km)}</div>
-          <div className={`text-xs ${nudge.due ? "font-semibold text-warn" : "text-muted"}`}>
+          <div className={`text-sm ${nudge.due ? "font-semibold text-warn" : "text-muted"}`}>
             diisi {agoText(nudge.daysAgo)}{nudge.due ? " · saatnya isi lagi" : ""}
           </div>
         </div>
@@ -54,8 +54,8 @@ export function VehicleCard({ o }: { o: VehicleOverview }) {
             return (
               <li key={p.id} className="flex flex-col gap-1.5">
                 <div className="flex items-baseline justify-between gap-2">
-                  <span className="truncate text-sm font-semibold">{p.name}</span>
-                  <span className={`shrink-0 text-xs font-medium tabular-nums ${ui.text}`}>{dueText(p.status)}</span>
+                  <span className="text-base font-semibold">{p.name}</span>
+                  <span className={`shrink-0 text-sm font-medium tabular-nums ${ui.text}`}>{dueText(p.status)}</span>
                 </div>
                 <ProgressBar size="sm" tone={ui.bar} pct={Math.min(100, p.status.usedPct * 100)} label={`${p.name} terpakai`} />
               </li>

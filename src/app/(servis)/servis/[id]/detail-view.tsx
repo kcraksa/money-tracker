@@ -35,13 +35,13 @@ export function DetailView({ id, o, visits, saved }: { id: string; o: VehicleOve
         <div className="flex items-center gap-3">
           <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-accent-soft text-2xl" aria-hidden>{KIND_ICON[vehicle.kind]}</span>
           <div className="min-w-0 flex-1">
-            <div className="flex items-center gap-1.5 text-xs text-muted"><Gauge className="h-3.5 w-3.5" aria-hidden /> Km sekarang</div>
+            <div className="flex items-center gap-1.5 text-sm text-muted"><Gauge className="h-4 w-4" aria-hidden /> Km sekarang</div>
             <div className="text-[28px] font-extrabold leading-tight tracking-tight tabular-nums">{kmText(vehicle.odometer_km)}</div>
           </div>
           <StatusPill summary={summary} />
         </div>
         <div className="flex items-center justify-between gap-3 rounded-2xl bg-surface-2 p-3">
-          <p className={`text-xs ${nudge.due ? "font-semibold text-warn" : "text-muted"}`}>
+          <p className={`text-sm ${nudge.due ? "font-semibold text-warn" : "text-muted"}`}>
             Diperbarui {agoText(nudge.daysAgo)}
             {kmPerDay ? <> · rata-rata ±{Math.round(kmPerDay).toLocaleString("id-ID")} km/hari</> : null}
           </p>
@@ -70,11 +70,11 @@ export function DetailView({ id, o, visits, saved }: { id: string; o: VehicleOve
                   {p.status.status !== "unknown" && (
                     <ProgressBar size="sm" tone={ui.bar} pct={Math.min(100, p.status.usedPct * 100)} label={`${p.name} terpakai`} />
                   )}
-                  <div className="flex flex-wrap items-baseline justify-between gap-x-3 text-xs text-muted">
-                    <span className={`font-medium ${noReminder ? "" : ui.text}`}>{noReminder ? "Hanya dicatat riwayatnya" : dueText(p.status)}</span>
-                    {!noReminder && <span>{intervalText(p.interval_km, p.interval_months)}</span>}
+                  <div className={`text-sm font-semibold ${noReminder ? "text-muted" : ui.text}`}>
+                    {noReminder ? "Hanya dicatat riwayatnya" : dueText(p.status)}
                   </div>
-                  <div className="text-xs text-muted">
+                  {!noReminder && <div className="text-sm text-muted">Ganti {intervalText(p.interval_km, p.interval_months)}</div>}
+                  <div className="text-sm text-muted">
                     {p.lastOn && p.lastKm !== null
                       ? <>Terakhir {dateText(p.lastOn)} · {kmText(p.lastKm)}</>
                       : noReminder ? "Belum ada riwayat servis." : "Belum ada riwayat. Catat servis terakhirnya."}
@@ -88,11 +88,11 @@ export function DetailView({ id, o, visits, saved }: { id: string; o: VehicleOve
         )}
       </section>
 
-      <section aria-label="Riwayat terbaru">
-        <h2 className="section-title">
+      <section aria-labelledby="riwayat-h">
+        <h2 id="riwayat-h" className="section-title">
           <span>Riwayat terbaru</span>
-          <Link href={`/servis/riwayat?v=${id}`} transitionTypes={["nav-forward"]} className="flex items-center text-sm font-medium text-primary">
-            Semua <ChevronRight className="h-4 w-4" aria-hidden />
+          <Link href={`/servis/riwayat?v=${id}`} transitionTypes={["nav-forward"]} className="section-link">
+            Lihat semua <ChevronRight className="h-4 w-4" aria-hidden />
           </Link>
         </h2>
         {visits.length === 0 ? (
@@ -102,11 +102,11 @@ export function DetailView({ id, o, visits, saved }: { id: string; o: VehicleOve
             {visits.map((v) => (
               <li key={v.id} className="flex flex-col gap-1 px-4 py-3">
                 <div className="flex items-baseline justify-between gap-2">
-                  <span className="font-semibold">{dateText(v.serviced_on)}</span>
-                  <span className="text-xs tabular-nums text-muted">{kmText(v.odometer_km)}</span>
+                  <span className="text-base font-semibold">{dateText(v.serviced_on)}</span>
+                  <span className="text-sm tabular-nums text-muted">{kmText(v.odometer_km)}</span>
                 </div>
                 <div className="text-sm text-muted">{v.parts.join(", ") || "—"}</div>
-                {v.cost > 0 && <div className="text-xs font-semibold tabular-nums">{rupiah(v.cost)}</div>}
+                {v.cost > 0 && <div className="text-sm font-semibold tabular-nums">{rupiah(v.cost)}</div>}
               </li>
             ))}
           </ul>

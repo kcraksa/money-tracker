@@ -34,7 +34,10 @@ export function EvaluasiView(p: EvalProps) {
           <ChevronLeft className="h-5 w-5" aria-hidden />
         </Link>
       ) : <span className="h-11 w-11" />}
-      <h1 className="truncate px-2 text-center text-base font-bold tracking-tight">Laporan belanja {p.monthLabel}</h1>
+      <h1 className="min-w-0 flex-1 px-2 text-center leading-tight">
+        <span className="block text-sm font-medium text-muted">Laporan belanja</span>
+        <span className="block text-lg font-bold tracking-tight">{p.monthLabel}</span>
+      </h1>
       {p.nextHref ? (
         <Link href={p.nextHref} aria-label="Bulan berikutnya" className="flex h-11 w-11 items-center justify-center rounded-xl text-muted hover:bg-surface-2">
           <ChevronRight className="h-5 w-5" aria-hidden />
@@ -91,12 +94,11 @@ export function EvaluasiView(p: EvalProps) {
         <h2 id="banding-h" className="section-title">Rencana vs yang dibeli</h2>
         <ul className="card divide-y divide-border p-0">
           {(p.rows ?? []).map((r) => (
-            <li key={r.id} className="flex items-center justify-between gap-3 px-4 py-3">
-              <div className="min-w-0">
-                <div className="truncate font-semibold">{r.name}</div>
-                <div className="text-sm text-muted">
-                  Rencana {qty(r.qtyRec)} {r.unit} · {r.skipped ? "belum dibeli" : `dibeli ${qty(r.qtyBought)} × ${rupiah(r.priceActual)}`}
-                </div>
+            <li key={r.id} className="flex items-start justify-between gap-3 px-4 py-3">
+              <div className="min-w-0 flex-1">
+                <div className="text-base font-semibold">{r.name}</div>
+                <div className="text-sm text-muted">Rencana {qty(r.qtyRec)} {r.unit}</div>
+                <div className="text-sm text-muted">{r.skipped ? "Belum dibeli" : `Dibeli ${qty(r.qtyBought)} × ${rupiah(r.priceActual)}`}</div>
               </div>
               {r.skipped ? (
                 <span className="pill shrink-0 bg-surface-2 text-muted">Belum dibeli</span>
@@ -117,8 +119,8 @@ export function EvaluasiView(p: EvalProps) {
           <ul className="card divide-y divide-border p-0">
             {p.extras!.map((i) => (
               <li key={i.id} className="flex items-center justify-between gap-3 px-4 py-3">
-                <span className="min-w-0 truncate font-medium">{i.name} <span className="text-xs font-normal text-muted">{qty(i.qty)} {i.unit}</span></span>
-                <span className="font-semibold tabular-nums">{rupiah(i.total)}</span>
+                <span className="min-w-0 flex-1 text-base font-semibold">{i.name} <span className="text-sm font-normal text-muted">{qty(i.qty)} {i.unit}</span></span>
+                <span className="text-base font-bold tabular-nums">{rupiah(i.total)}</span>
               </li>
             ))}
           </ul>
@@ -138,8 +140,8 @@ export function EvaluasiView(p: EvalProps) {
 function Stat({ label, value, warn }: { label: string; value: string; warn?: boolean }) {
   return (
     <div className="px-2 py-3.5">
-      <div className="text-xs font-medium text-muted">{label}</div>
-      <div className={`mt-0.5 text-sm font-bold tabular-nums ${warn ? "text-warn" : ""}`}>{value}</div>
+      <div className="text-sm text-muted">{label}</div>
+      <div className={`mt-0.5 text-[15px] font-bold tabular-nums ${warn ? "text-warn" : ""}`}>{value}</div>
     </div>
   );
 }

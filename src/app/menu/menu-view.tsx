@@ -33,7 +33,7 @@ export function MenuView({ greeting, name, service }: MenuProps) {
 
       <div>
         <h2 className="text-[28px] font-extrabold leading-tight tracking-tight">Mau buka yang mana?</h2>
-        <p className="mt-1 text-muted">Ketuk salah satu. Kamu bisa kembali ke sini lewat tombol Menu.</p>
+        <p className="mt-1 text-muted">Ketuk salah satu. Nanti kamu bisa pindah kapan saja lewat tombol di bagian atas.</p>
       </div>
 
       <nav aria-label="Menu utama" className="flex flex-col gap-4">

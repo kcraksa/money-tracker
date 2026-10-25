@@ -65,39 +65,40 @@ export function AllocationForm({ categories, incomeTotal }: { categories: AllocC
       {groups.map((g) => (
         <section key={g.title} className="card flex flex-col gap-4 p-4" aria-label={g.title}>
           <div>
-            <h3 className="text-[15px] font-semibold tracking-tight">{g.title}</h3>
+            <h3 className="text-[17px] font-bold tracking-tight">{g.title}</h3>
             <p className="text-sm text-muted">{g.hint}</p>
           </div>
           {g.items.map((c) => (
-            <div key={c.id} className="flex items-center gap-3">
-              <CategoryIcon icon={c.icon} size="sm" />
-              <div className="min-w-0 flex-1">
-                <label className="mb-1 block truncate text-sm font-medium" htmlFor={`a_${c.id}`}>
+            <div key={c.id} className="flex flex-col gap-2">
+              <label className="flex items-center gap-2.5 text-base font-semibold" htmlFor={`a_${c.id}`}>
+                <CategoryIcon icon={c.icon} size="sm" />
+                <span className="min-w-0 flex-1">
                   {c.name}
-                  {c.lump_sum && <span className="ml-1.5 text-xs font-normal text-muted">dibayar sekaligus</span>}
-                </label>
-                <div className="flex items-end gap-2">
-                  <input
-                    id={`a_${c.id}`} name={`budget_${c.id}`} inputMode="numeric" placeholder="Rp 0" className="input min-h-11 font-semibold tabular-nums"
-                    value={amounts[c.id] ? Number(amounts[c.id]).toLocaleString("id-ID") : ""}
-                    onChange={(e) => setAmounts((a) => ({ ...a, [c.id]: digits(e.target.value) }))}
-                  />
-                  {c.kind === "fixed" && (
-                    <label className="flex w-24 shrink-0 flex-col">
-                      <span className="mb-1 text-xs font-medium text-muted">Bayar tgl</span>
-                      <input
-                        name={`due_${c.id}`} inputMode="numeric" className="input min-h-11 text-center" placeholder="1–28"
-                        aria-label={`Tanggal bayar ${c.name} tiap bulan`} defaultValue={c.due_day ?? ""}
-                      />
-                    </label>
-                  )}
-                </div>
+                  {c.lump_sum && <span className="ml-2 text-sm font-normal text-muted">dibayar sekaligus</span>}
+                </span>
+              </label>
+              <div className="flex items-end gap-2">
+                <input
+                  id={`a_${c.id}`} name={`budget_${c.id}`} inputMode="numeric" placeholder="Rp 0" aria-label={`Jumlah untuk ${c.name} (Rp)`}
+                  className="input font-semibold tabular-nums"
+                  value={amounts[c.id] ? Number(amounts[c.id]).toLocaleString("id-ID") : ""}
+                  onChange={(e) => setAmounts((a) => ({ ...a, [c.id]: digits(e.target.value) }))}
+                />
+                {c.kind === "fixed" && (
+                  <label className="flex w-28 shrink-0 flex-col">
+                    <span className="mb-1 text-sm text-muted">Bayar tgl</span>
+                    <input
+                      name={`due_${c.id}`} inputMode="numeric" className="input text-center" placeholder="1–28"
+                      aria-label={`Tanggal bayar ${c.name} tiap bulan`} defaultValue={c.due_day ?? ""}
+                    />
+                  </label>
+                )}
               </div>
             </div>
           ))}
         </section>
       ))}
-      <p className="-mt-2 text-xs text-muted">
+      <p className="-mt-2 text-sm text-muted">
         &quot;Bayar tgl&quot; = tanggal tagihan harus dibayar tiap bulan (1–28). Pembagian ini tetap dipakai sampai kamu mengubahnya.
       </p>
       <SubmitButton pendingLabel="Menyimpan…" className="btn-primary">Simpan pembagian</SubmitButton>

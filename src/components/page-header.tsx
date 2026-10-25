@@ -13,7 +13,7 @@ export function PageHeader({
         </Link>
       )}
       <div className="min-w-0 flex-1">
-        <h1 className="break-words text-[22px] font-bold leading-tight tracking-tight">{title}</h1>
+        <h1 className="break-words text-2xl font-bold leading-tight tracking-tight">{title}</h1>
         {subtitle && <p className="break-words text-sm text-muted">{subtitle}</p>}
       </div>
       {actions && <div className="flex shrink-0 items-center gap-2">{actions}</div>}
