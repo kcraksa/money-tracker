@@ -7,6 +7,8 @@
   --surface: #ffffff;
   --surface-2: #eef2f0;
   --border: #e2e8e5;
+  /* Tepi kontrol (kolom isian, kotak centang): min. 3:1 terhadap latar, WCAG 1.4.11. */
+  --control: #76857e;
   --fg: #0e1916;
   --muted: #5b6b64;
   --primary: #0f766e;
@@ -15,8 +17,8 @@
   --primary-soft: #e3f3f0;
   --accent: #f59e0b;
   --accent-soft: #fef3d6;
-  --ok: #15803d;
-  --warn: #b45309;
+  --ok: #14703a;
+  --warn: #9a4a0b;
   --danger: #b91c1c;
   --ok-bg: #dcf5e4;
   --warn-bg: #fdf0cf;
@@ -33,6 +35,7 @@
     --surface: #121a18;
     --surface-2: #1a2422;
     --border: #243230;
+    --control: #66796f;
     --fg: #e9f0ed;
     --muted: #8fa399;
     --primary: #2dd4bf;
@@ -59,6 +62,7 @@
   --surface: #121a18;
   --surface-2: #1a2422;
   --border: #243230;
+  --control: #66796f;
   --fg: #e9f0ed;
   --muted: #8fa399;
   --primary: #2dd4bf;
@@ -79,11 +83,18 @@
   --shadow-lg: 0 10px 30px -10px rgb(0 0 0 / 0.6);
 }
 
+/* Teks terkecil 13px (bawaan Tailwind 12px terlalu kecil untuk dibaca semua umur). */
+@theme {
+  --text-xs: 0.8125rem;
+  --text-xs--line-height: 1.15rem;
+}
+
 @theme inline {
   --color-bg: var(--bg);
   --color-surface: var(--surface);
   --color-surface-2: var(--surface-2);
   --color-border: var(--border);
+  --color-control: var(--control);
   --color-fg: var(--fg);
   --color-muted: var(--muted);
   --color-primary: var(--primary);
@@ -179,11 +190,11 @@ button, a, nav, summary, [role="tab"], [role="checkbox"] {
   @apply btn text-muted hover:bg-surface-2;
 }
 @utility input {
-  @apply min-h-12 w-full rounded-xl border border-border bg-surface px-3.5 text-base text-fg outline-none
-    transition placeholder:text-muted/70 focus:border-primary focus:ring-4 focus:ring-primary/15;
+  @apply min-h-12 w-full rounded-xl border border-control bg-surface px-3.5 text-base text-fg outline-none
+    transition placeholder:text-muted focus:border-primary focus:ring-4 focus:ring-primary/15;
 }
 @utility label {
-  @apply mb-1.5 block text-[13px] font-medium text-muted;
+  @apply mb-1.5 block text-sm font-semibold text-fg;
 }
 @utility pill {
   @apply inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold;

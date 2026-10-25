@@ -73,7 +73,7 @@ export function LoginForm({ initialError }: { initialError: string }) {
         <Logo size={64} />
         <div>
           <h1 className="text-[32px] font-extrabold leading-tight tracking-tight">Catatan Kita</h1>
-          <p className="mt-1 text-base text-muted">Catat pengeluaran rumah tangga berdua, cepat dan tanpa ribet.</p>
+          <p className="mt-1 text-base text-muted">Catat uang keluarga dengan mudah, bisa berdua atau sendiri.</p>
         </div>
       </div>
 
@@ -84,12 +84,12 @@ export function LoginForm({ initialError }: { initialError: string }) {
         >
           {busy && !sent ? <Spinner className="h-5 w-5" /> : <GoogleIcon />} {busy && !sent ? "Mengalihkan…" : "Lanjutkan dengan Google"}
         </button>
-        <p className="text-center text-xs text-muted">
+        <p className="text-center text-sm text-muted">
           Pakai akun Google yang sama di HP kamu dan pasangan. Tidak perlu password.
         </p>
 
         <details className="group border-t border-border pt-3" open={sent}>
-          <summary className="flex min-h-10 cursor-pointer list-none items-center justify-center text-sm font-medium text-muted">
+          <summary className="flex min-h-11 cursor-pointer list-none items-center justify-center text-sm font-semibold text-primary underline-offset-2 hover:underline">
             Atau masuk dengan email
           </summary>
           {!sent ? (
@@ -111,15 +111,18 @@ export function LoginForm({ initialError }: { initialError: string }) {
               <p className="text-sm text-muted">
                 Link masuk dikirim ke <b className="text-fg">{email}</b>. Buka dari HP ini, atau masukkan kode 6 digit dari email.
               </p>
-              <input
-                inputMode="numeric" autoComplete="one-time-code" maxLength={8} aria-label="Kode 6 digit"
-                className="input text-center text-2xl font-bold tracking-[0.4em]" placeholder="••••••"
-                value={code} onChange={(e) => setCode(e.target.value.replace(/\D/g, ""))}
-              />
+              <label className="flex flex-col">
+                <span className="label">Kode 6 angka dari email</span>
+                <input
+                  inputMode="numeric" autoComplete="one-time-code" maxLength={8}
+                  className="input text-center text-2xl font-bold tracking-[0.4em]" placeholder="••••••"
+                  value={code} onChange={(e) => setCode(e.target.value.replace(/\D/g, ""))}
+                />
+              </label>
               <button className="btn-primary" disabled={busy || code.length < 6}>
                 {busy && <Spinner />}{busy ? "Memeriksa…" : "Masuk"}
               </button>
-              <button type="button" className="btn-ghost min-h-10 text-sm" onClick={() => setSent(false)}>
+              <button type="button" className="btn-ghost text-sm" onClick={() => setSent(false)}>
                 Ganti email
               </button>
             </form>

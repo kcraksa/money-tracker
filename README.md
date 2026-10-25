@@ -107,8 +107,10 @@ Perintah lain: `npm test` (logika + skema SQL/RLS di Postgres nyata via pglite),
    [`0001_init.sql`](supabase/migrations/0001_init.sql), lalu
    [`0002_period_income_store.sql`](supabase/migrations/0002_period_income_store.sql) (periode gajian, pemasukan, toko & urutan rak), lalu
    [`0003_stock_check.sql`](supabase/migrations/0003_stock_check.sql) (waktu cek stok), lalu
-   [`0004_service_record.sql`](supabase/migrations/0004_service_record.sql) (Service Record: kendaraan, part, km, riwayat servis).
-   (Atau dengan CLI: `supabase link` lalu `supabase db push`, yang menjalankan keduanya.)
+   [`0004_service_record.sql`](supabase/migrations/0004_service_record.sql) (Service Record: kendaraan, part, km, riwayat servis), lalu
+   [`0005_flexible_parts.sql`](supabase/migrations/0005_flexible_parts.sql) (komponen servis boleh tanpa interval/pengingat).
+   (Atau dengan CLI: `supabase link` lalu `supabase db push`, yang menjalankan semuanya.)
+   Tanpa 0005 aplikasi tetap jalan; hanya menyimpan komponen tanpa pengingat yang akan ditolak dengan pesan yang jelas.
 3. **Project Settings → API**: salin **Project URL** dan **anon public key**. Keduanya aman berada di browser,
    karena keamanan data dijaga Row Level Security per rumah tangga.
 4. **Authentication → URL Configuration**

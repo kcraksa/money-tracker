@@ -88,6 +88,16 @@ export async function addCategory(form: FormData) {
   done();
 }
 
+/** Ganti nama dan ikon kategori; catatan lamanya ikut tampil dengan nama baru karena merujuk ke kategori yang sama. */
+export async function renameCategory(form: FormData) {
+  const { supabase } = await getCtx();
+  const name = String(form.get("name") ?? "").trim().slice(0, 30);
+  if (!name) done("/rencana?err=nama");
+  const icon = String(form.get("icon") ?? "").trim().slice(0, 4);
+  await supabase.from("category").update({ name, ...(icon ? { icon } : {}) }).eq("id", String(form.get("id")));
+  done();
+}
+
 /** Pos diarsipkan (bukan dihapus) supaya riwayat pengeluarannya tetap utuh. */
 export async function archiveCategory(form: FormData) {
   const { supabase } = await getCtx();

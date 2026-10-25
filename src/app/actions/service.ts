@@ -64,7 +64,6 @@ export async function addVehicle(input: NewVehicleInput): Promise<Result<{ id: s
     if (!pn) return { ok: false, error: "Ada part tanpa nama." };
     if (seen.has(pn.toLowerCase())) return { ok: false, error: `Part "${pn}" tercatat dua kali.` };
     seen.add(pn.toLowerCase());
-    if (!ik && !im) return { ok: false, error: `Part "${pn}" butuh interval km atau bulan.` };
     const lastKm = int(p.lastKm, KM_MAX);
     if (lastKm !== null && lastKm > km) return { ok: false, error: `Km servis terakhir "${pn}" tidak boleh melebihi km sekarang.` };
     // Tanggal tidak diisi -> pakai hari ini (perkiraan); hanya relevan bila ada km servis terakhir.
@@ -93,6 +92,7 @@ export async function addVehicle(input: NewVehicleInput): Promise<Result<{ id: s
       interval_km: p.intervalKm, interval_months: p.intervalMonths, sort_order: i,
     })))
     .select("id, name");
+  if (e2?.code === "23514") return rollback("Database perlu diperbarui dulu (migrasi 0005) agar komponen boleh tanpa pengingat.");
   if (e2 || !inserted) return rollback("Gagal menyimpan daftar part, coba lagi.");
   const idByName = new Map(inserted.map((r) => [String(r.name).toLowerCase(), r.id as string]));
 
@@ -205,18 +205,20 @@ export async function savePart(form: FormData) {
   const ik = int(form.get("interval_km"), 500_000);
   const im = int(form.get("interval_months"), 240);
   if (!name) redirect(back(vehicleId, "err=nama"));
-  if (!ik && !im) redirect(back(vehicleId, "err=interval"));
 
+  let failed: { code?: string } | null = null;
   if (partId && UUID.test(partId)) {
-    await supabase.from("service_part").update({ name, interval_km: ik || null, interval_months: im || null }).eq("id", partId);
+    failed = (await supabase.from("service_part").update({ name, interval_km: ik || null, interval_months: im || null }).eq("id", partId)).error;
   } else {
     const { data: last } = await supabase.from("service_part").select("sort_order")
       .eq("vehicle_id", vehicleId).order("sort_order", { ascending: false }).limit(1);
-    await supabase.from("service_part").insert({
+    failed = (await supabase.from("service_part").insert({
       household_id: householdId, vehicle_id: vehicleId, name,
       interval_km: ik || null, interval_months: im || null, sort_order: (last?.[0]?.sort_order ?? 0) + 1,
-    });
+    })).error;
   }
+  // 23514 = constraint lama (butuh interval) masih ada: migrasi 0005 belum dijalankan.
+  if (failed?.code === "23514") redirect(back(vehicleId, "err=migrasi"));
   done();
   redirect(back(vehicleId));
 }

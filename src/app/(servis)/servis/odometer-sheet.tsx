@@ -48,10 +48,10 @@ export function OdometerSheet({ open, onClose, vehicle }: Props) {
   }
 
   return (
-    <Sheet open={open} onClose={onClose} title={`Update km ${vehicle.name}`}>
+    <Sheet open={open} onClose={onClose} title={`Isi km ${vehicle.name}`}>
       <form onSubmit={(e) => { e.preventDefault(); submit(Boolean(confirmMsg)); }} className="flex flex-col gap-3 pb-2">
         <div>
-          <label className="label" htmlFor={`km_${vehicle.id}`}>Km di odometer sekarang</label>
+          <label className="label" htmlFor={`km_${vehicle.id}`}>Angka km di speedometer sekarang</label>
           <input
             id={`km_${vehicle.id}`} inputMode="numeric" autoFocus enterKeyHint="done" placeholder="0"
             className="input text-center text-3xl font-extrabold tabular-nums"

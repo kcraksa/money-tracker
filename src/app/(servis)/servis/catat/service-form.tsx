@@ -49,7 +49,7 @@ export function ServiceForm({ vehicles, defaultId, today }: { vehicles: FormVehi
   function submit(e: React.FormEvent) {
     e.preventDefault();
     setError("");
-    if (picked.size === 0) return setError("Pilih minimal satu part yang diservis.");
+    if (picked.size === 0) return setError("Pilih minimal satu komponen yang diservis.");
     if (km === "") return setError("Isi km saat servis.");
     start(async () => {
       let r;
@@ -70,7 +70,7 @@ export function ServiceForm({ vehicles, defaultId, today }: { vehicles: FormVehi
 
   return (
     <form onSubmit={submit} className="flex flex-col gap-5">
-      <PageHeader title="Catat servis" subtitle="Part apa saja yang diservis?" back={`/servis/${vehicleId}`} />
+      <PageHeader title="Catat servis" subtitle="Komponen apa saja yang diservis?" back={`/servis/${vehicleId}`} />
 
       <section className="card flex flex-col gap-4 p-5" aria-label="Data servis">
         {vehicles.length > 1 && (
@@ -93,8 +93,8 @@ export function ServiceForm({ vehicles, defaultId, today }: { vehicles: FormVehi
         </div>
       </section>
 
-      <section aria-label="Part yang diservis">
-        <h2 className="section-title"><span>Part yang diservis</span><span className="text-xs font-medium text-muted">{picked.size} dipilih</span></h2>
+      <section aria-labelledby="diservis-h">
+        <h2 id="diservis-h" className="section-title"><span>Komponen yang diservis</span><span className="text-xs font-medium text-muted">{picked.size} dipilih</span></h2>
         <ul className="card divide-y divide-border p-0">
           {vehicle.parts.map((p) => {
             const on = picked.has(p.id);
@@ -102,7 +102,7 @@ export function ServiceForm({ vehicles, defaultId, today }: { vehicles: FormVehi
             return (
               <li key={p.id}>
                 <button type="button" role="checkbox" aria-checked={on} onClick={() => toggle(p.id)} className="flex w-full items-center gap-3 px-4 py-3 text-left">
-                  <span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full border-2 transition ${on ? "border-primary bg-primary text-primary-fg" : "border-border"}`}>
+                  <span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full border-2 transition ${on ? "border-primary bg-primary text-primary-fg" : "border-control"}`}>
                     {on && <Check className="h-4 w-4" strokeWidth={3} aria-hidden />}
                   </span>
                   <span className="min-w-0 flex-1">
@@ -120,23 +120,23 @@ export function ServiceForm({ vehicles, defaultId, today }: { vehicles: FormVehi
       <section className="card flex flex-col gap-4 p-5" aria-label="Detail tambahan">
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <label className="label" htmlFor="biaya">Biaya (opsional)</label>
+            <label className="label" htmlFor="biaya">Biaya <span className="font-normal text-muted">(boleh kosong)</span></label>
             <input id="biaya" className="input tabular-nums" inputMode="numeric" placeholder="Rp 0" value={cost ? Number(cost).toLocaleString("id-ID") : ""} onChange={(e) => setCost(digits(e.target.value).slice(0, 10))} />
           </div>
           <div>
-            <label className="label" htmlFor="bengkel">Bengkel (opsional)</label>
+            <label className="label" htmlFor="bengkel">Bengkel <span className="font-normal text-muted">(boleh kosong)</span></label>
             <input id="bengkel" className="input" maxLength={60} value={workshop} onChange={(e) => setWorkshop(e.target.value)} />
           </div>
         </div>
         <div>
-          <label className="label" htmlFor="catatan">Catatan (opsional)</label>
+          <label className="label" htmlFor="catatan">Catatan <span className="font-normal text-muted">(boleh kosong)</span></label>
           <input id="catatan" className="input" maxLength={200} placeholder="mis. ganti oli sintetis" value={note} onChange={(e) => setNote(e.target.value)} />
         </div>
       </section>
 
       {error && <p role="alert" className="rounded-2xl bg-danger-bg p-3.5 text-sm text-danger">{error}</p>}
       <button className="btn-primary min-h-14 text-base" disabled={pending || picked.size === 0}>
-        {pending ? <><Spinner /> Menyimpan…</> : `Simpan servis${picked.size ? ` (${picked.size} part)` : ""}`}
+        {pending ? <><Spinner /> Menyimpan…</> : `Simpan servis${picked.size ? ` (${picked.size} komponen)` : ""}`}
       </button>
     </form>
   );

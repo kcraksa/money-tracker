@@ -1,5 +1,6 @@
 import { PullToRefresh } from "@/components/pull-to-refresh";
 import { RealtimeRefresh } from "@/components/realtime-refresh";
+import { RememberModule } from "@/components/remember-module";
 import { ServisNav } from "@/components/servis-nav";
 import { getCtx } from "@/lib/ctx";
 
@@ -10,9 +11,10 @@ export default async function ServisLayout({ children }: { children: React.React
   const { householdId } = await getCtx();
   return (
     <>
-      <div className="mx-auto w-full max-w-md px-4 pb-32 pt-[max(env(safe-area-inset-top),1.25rem)]">
+      <main className="mx-auto w-full max-w-md px-4 pb-36 pt-[max(env(safe-area-inset-top),1.25rem)]">
         <PullToRefresh>{children}</PullToRefresh>
-      </div>
+      </main>
+      <RememberModule module="servis" />
       <ServisNav />
       <RealtimeRefresh householdId={householdId} />
     </>

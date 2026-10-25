@@ -13,6 +13,9 @@ import { forecast } from "./forecast";
 import { BADGES, computeStreak, levelInfo, questProgress, savingPoints } from "./gamification";
 import { evaluate, isPlanned, matchesQuery, recommend, suggestMonthlyNeed } from "./shopping";
 import { qty, rupiah } from "./format";
+import { MAX_AMOUNT, cleanAmount, cleanSpentOn } from "./expense-input";
+import { parseModule } from "./last-module";
+import { isSimpleValue } from "./simple-mode";
 import type { ListItem } from "./types";
 
 describe("date", () => {
@@ -262,9 +265,9 @@ describe("gamifikasi", () => {
     expect(questProgress("berdua_kompak", ctx)).toEqual({ done: 1, target: 2 });
     expect(questProgress("stok_rapi", ctx)).toEqual({ done: 10, target: 10 });
   });
-  it("3 badge sesuai spesifikasi", () => {
+  it("3 lencana sesuai spesifikasi (nama dalam bahasa sehari-hari)", () => {
     expect(BADGES.map((b) => b.title)).toEqual([
-      "Belanja Sesuai Rekomendasi", "Budget Aman", "Listrik Lunas Tepat Waktu",
+      "Belanja Sesuai Daftar", "Anggaran Aman", "Listrik Lunas Tepat Waktu",
     ]);
   });
 });
@@ -454,5 +457,47 @@ describe("service record: laju, pengingat, ringkasan, validasi", () => {
       for (const p of TEMPLATES[k]) expect(p.intervalKm || p.intervalMonths).toBeTruthy();
       expect(new Set(TEMPLATES[k].map((p) => p.name)).size).toBe(TEMPLATES[k].length);
     }
+  });
+});
+
+describe("input pengeluaran", () => {
+  it("nominal: dibulatkan, harus 1..batas, sisanya ditolak", () => {
+    expect(cleanAmount(15000)).toBe(15000);
+    expect(cleanAmount("2500.4")).toBe(2500);
+    for (const bad of [0, -5, NaN, "abc", undefined, MAX_AMOUNT + 1]) expect(cleanAmount(bad)).toBeNull();
+    expect(cleanAmount(MAX_AMOUNT)).toBe(MAX_AMOUNT);
+  });
+  it("tanggal: boleh hari ini sampai batas mundur, tidak boleh masa depan atau format salah", () => {
+    const today = "2026-10-25";
+    expect(cleanSpentOn("2026-10-25", today)).toBe("2026-10-25");
+    expect(cleanSpentOn("2026-10-20", today)).toBe("2026-10-20");
+    expect(cleanSpentOn("2026-10-26", today)).toBeNull(); // besok
+    expect(cleanSpentOn("2026-08-24", today)).toBe("2026-08-24"); // tepat 62 hari
+    expect(cleanSpentOn("2026-08-23", today)).toBeNull(); // 63 hari
+    expect(cleanSpentOn("2026-10-10", today, 7)).toBeNull(); // batas mundur khusus (catat baru: 31 hari)
+    for (const bad of ["25/10/2026", "2026-13-40", "", undefined, 5]) expect(cleanSpentOn(bad, today)).toBeNull();
+  });
+});
+
+describe("pengaturan perangkat", () => {
+  it("mode sederhana hanya menyala bila nilainya persis '1'", () => {
+    expect(isSimpleValue("1")).toBe(true);
+    for (const v of ["0", "", "true", undefined]) expect(isSimpleValue(v)).toBe(false);
+  });
+  it("modul terakhir: hanya nilai yang dikenal yang dipakai (cegah pengalihan ke alamat sembarang)", () => {
+    expect(parseModule("keuangan")).toBe("keuangan");
+    expect(parseModule("servis")).toBe("servis");
+    for (const v of ["//evil.com", "/servis", "", undefined]) expect(parseModule(v)).toBeNull();
+  });
+});
+
+describe("komponen servis tanpa interval", () => {
+  it("tidak punya pengingat: status 'unknown' walau ada riwayat servis", () => {
+    const s = partStatus({ intervalKm: null, intervalMonths: null, lastKm: 20000, lastOn: "2026-05-01" }, { currentKm: 30000, today: "2026-10-25", kmPerDay: 20 });
+    expect(s.status).toBe("unknown");
+    expect(s.remainingKm).toBeNull();
+  });
+  it("ringkasan kendaraan hanya dari komponen yang punya pengingat", () => {
+    expect(summarize([]).worst).toBe("ok");
   });
 });

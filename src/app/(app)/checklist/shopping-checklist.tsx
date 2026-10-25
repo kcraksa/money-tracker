@@ -2,6 +2,8 @@
 
 import { SubmitButton } from "@/components/submit-button";
 import { Spinner } from "@/components/spinner";
+import { ConfirmButton } from "@/components/confirm-button";
+import { Field } from "@/components/field";
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { addExtra, addStore, finishList, refreshList, removeListItem, setListStore, updateListItem } from "@/app/actions/shopping";
 import { Check, Minus, Plus, RefreshCw, Route, Search, Store, WifiOff, X } from "@/components/icons";
@@ -168,7 +170,7 @@ export function ShoppingChecklist({ listId, periodLabel, initialItems, stores, s
         <p className="flex items-start gap-2 text-xs text-muted">
           <Route className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden />
           {!storeId
-            ? "Pilih toko supaya urutan checklist mengikuti rak. Urutan dipelajari dari kebiasaanmu."
+            ? "Pilih toko supaya urutan daftar mengikuti letak rak. Aplikasi belajar dari kebiasaanmu."
             : trips > 0
               ? `Urutan mengikuti rak ${store?.name}, dipelajari dari ${trips} kali belanja. Centang saat barang masuk keranjang.`
               : `Belum ada data rak ${store?.name}. Centang barang saat masuk keranjang; belanja berikutnya otomatis berurutan.`}
@@ -178,7 +180,7 @@ export function ShoppingChecklist({ listId, periodLabel, initialItems, stores, s
       <section className="card flex flex-col gap-3" aria-label="Ringkasan belanja">
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <div className="text-xs font-medium text-muted">Estimasi</div>
+            <div className="text-xs font-medium text-muted">Perkiraan</div>
             <div className="text-xl font-bold tracking-tight tabular-nums">{rupiah(estimate)}</div>
           </div>
           <div className="text-right">
@@ -227,8 +229,8 @@ export function ShoppingChecklist({ listId, periodLabel, initialItems, stores, s
 
       <div className="grid grid-cols-[auto_1fr] gap-2">
         <form action={refreshList}>
-          <SubmitButton iconOnly className="btn-soft h-full px-4" aria-label="Segarkan rekomendasi dari stok" title="Segarkan dari stok">
-            <RefreshCw className="h-[18px] w-[18px]" aria-hidden />
+          <SubmitButton pendingLabel="…" className="btn-soft h-full px-3.5 text-sm" aria-label="Perbarui daftar dari stok rumah">
+            <RefreshCw className="h-[18px] w-[18px]" aria-hidden /> Perbarui
           </SubmitButton>
         </form>
         <button className="btn-primary" disabled={actual === 0} onClick={() => { haptic("select"); setShowFinish(true); }}>
@@ -239,28 +241,35 @@ export function ShoppingChecklist({ listId, periodLabel, initialItems, stores, s
       <Sheet open={showStore} onClose={() => setShowStore(false)} title="Tambah toko">
         <form action={async (fd) => { await addStore(fd); setShowStore(false); }} className="flex flex-col gap-3 pb-2">
           <input type="hidden" name="list_id" value={listId} />
-          <input
-            name="name" required maxLength={40} autoFocus className="input" aria-label="Nama toko"
-            placeholder="Nama toko, mis. Hari-Hari" enterKeyHint="done"
-          />
-          <p className="text-xs text-muted">Urutan rak toko ini akan dipelajari dari urutan kamu mencentang barang.</p>
+          <Field label="Nama toko">
+            <input name="name" required maxLength={40} autoFocus className="input" placeholder="mis. Hari-Hari" enterKeyHint="done" />
+          </Field>
+          <p className="text-sm text-muted">Aplikasi mengingat urutan kamu mencentang barang di toko ini, supaya daftar berikutnya urut sesuai rak.</p>
           <SubmitButton pendingLabel="Menambah…" className="btn-primary">Tambah & pakai toko ini</SubmitButton>
         </form>
       </Sheet>
 
-      <Sheet open={showExtra} onClose={() => setShowExtra(false)} title="Barang di luar daftar">
-        <form action={async (fd) => { await addExtra(fd); setShowExtra(false); }} className="grid grid-cols-6 gap-2 pb-2">
+      <Sheet open={showExtra} onClose={() => setShowExtra(false)} title="Beli barang di luar daftar">
+        <form action={async (fd) => { await addExtra(fd); setShowExtra(false); }} className="grid grid-cols-3 gap-3 pb-2">
           <input type="hidden" name="list_id" value={listId} />
-          <input name="name" required autoFocus defaultValue={query.trim()} className="input col-span-6" placeholder="Nama barang" aria-label="Nama barang" enterKeyHint="next" />
-          <input name="qty" inputMode="decimal" className="input col-span-2" placeholder="Jml" defaultValue="1" aria-label="Jumlah" />
-          <input name="unit" className="input col-span-2" placeholder="pcs" aria-label="Satuan" />
-          <input name="price" inputMode="numeric" className="input col-span-2" placeholder="Harga" aria-label="Harga per satuan" enterKeyHint="done" />
-          <label className="col-span-6 flex items-center gap-2.5 text-sm text-muted">
+          <Field label="Nama barang" className="col-span-3">
+            <input name="name" required autoFocus defaultValue={query.trim()} className="input" placeholder="mis. Kecap" enterKeyHint="next" />
+          </Field>
+          <Field label="Jumlah">
+            <input name="qty" inputMode="decimal" className="input" defaultValue="1" />
+          </Field>
+          <Field label="Satuan">
+            <input name="unit" className="input" placeholder="pcs" />
+          </Field>
+          <Field label="Harga/satuan">
+            <input name="price" inputMode="numeric" className="input" placeholder="Rp" enterKeyHint="done" />
+          </Field>
+          <label className="col-span-3 flex min-h-11 items-center gap-3 text-sm">
             <input type="checkbox" name="save_item" defaultChecked className="h-5 w-5 accent-[var(--color-primary)]" />
             Simpan ke daftar barang (stok ikut tercatat)
           </label>
-          <p className="col-span-6 text-xs text-muted">Kalau namanya sudah ada di daftar barang rumah, stok dan harga terakhirnya ikut diperbarui.</p>
-          <SubmitButton pendingLabel="Menambah…" className="btn-primary col-span-6">Tambah ke keranjang</SubmitButton>
+          <p className="col-span-3 text-sm text-muted">Kalau namanya sudah ada di daftar barang rumah, stok dan harga terakhirnya ikut diperbarui.</p>
+          <SubmitButton pendingLabel="Menambah…" className="btn-primary col-span-3">Tambah ke keranjang</SubmitButton>
         </form>
       </Sheet>
 
@@ -268,7 +277,7 @@ export function ShoppingChecklist({ listId, periodLabel, initialItems, stores, s
         <div className="flex flex-col gap-4 pb-2">
           <dl className="card flex flex-col gap-2.5 p-4 text-sm">
             <div className="flex justify-between"><dt className="text-muted">Barang dicentang</dt><dd className="font-semibold tabular-nums">{items.filter((i) => i.checked).length} dari {items.length}</dd></div>
-            <div className="flex justify-between"><dt className="text-muted">Estimasi</dt><dd className="font-semibold tabular-nums">{rupiah(estimate)}</dd></div>
+            <div className="flex justify-between"><dt className="text-muted">Perkiraan</dt><dd className="font-semibold tabular-nums">{rupiah(estimate)}</dd></div>
             <div className="flex justify-between"><dt className="text-muted">Terbelanja</dt><dd className={`font-bold tabular-nums ${over ? "text-danger" : "text-ok"}`}>{rupiah(actual)}</dd></div>
           </dl>
           {items.some((i) => !i.checked && isPlanned(i)) && (
@@ -294,7 +303,7 @@ const isSpare = (i: ListItem, activeId: string | null) =>
 
 function Divider({ children }: { children: React.ReactNode }) {
   return (
-    <li role="presentation" className="flex items-center gap-3 pt-1 text-[11px] font-semibold uppercase tracking-wider text-muted">
+    <li className="flex items-center gap-3 pt-1 text-xs font-semibold uppercase tracking-wider text-muted">
       <span className="h-px flex-1 bg-border" aria-hidden /> {children} <span className="h-px flex-1 bg-border" aria-hidden />
     </li>
   );
@@ -320,6 +329,21 @@ function Row({
     save({ checked, unit_price_actual });
   }
 
+  // Jumlah bisa diketik langsung (mis. 0,5 kg), selain tombol − dan +.
+  const [qtyText, setQtyText] = useState(fmtQty(item.qty_bought));
+  const [seenQty, setSeenQty] = useState(item.qty_bought);
+  if (seenQty !== item.qty_bought) {
+    setSeenQty(item.qty_bought);
+    setQtyText(fmtQty(item.qty_bought));
+  }
+  function commitQty() {
+    const v = Number(qtyText.replace(",", "."));
+    if (!Number.isFinite(v) || qtyText.trim() === "") return setQtyText(fmtQty(item.qty_bought));
+    const q = Math.min(100000, Math.max(0, Math.round(v * 100) / 100));
+    setQtyText(fmtQty(q));
+    if (q !== item.qty_bought) { onChange({ qty_bought: q }); save({ qty_bought: q }); }
+  }
+
   function step(delta: number) {
     const q = Math.max(0, Math.round((item.qty_bought + delta) * 100) / 100);
     onChange({ qty_bought: q });
@@ -340,7 +364,7 @@ function Row({
         <button
           role="checkbox" aria-checked={item.checked} aria-label={`Centang ${item.name}`} onClick={toggle}
           className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full border-2 transition ${
-            item.checked ? "border-primary bg-primary text-primary-fg" : "border-border bg-surface"
+            item.checked ? "border-primary bg-primary text-primary-fg" : "border-control bg-surface"
           }`}
         >
           {item.checked && <Check className="h-4 w-4" strokeWidth={3} aria-hidden />}
@@ -352,15 +376,19 @@ function Row({
               ? "Di luar daftar"
               : item.qty_recommended === 0
                 ? `Stok masih ${stock !== undefined ? `${fmtQty(stock)} ${item.unit}` : "ada"} · cukup bulan ini`
-                : `Beli ${fmtQty(item.qty_recommended)} ${item.unit}${item.unit_price_est ? ` · est. ${rupiah(item.unit_price_est)}/${item.unit}` : ""}`}
+                : `Beli ${fmtQty(item.qty_recommended)} ${item.unit}${item.unit_price_est ? ` · kira-kira ${rupiah(item.unit_price_est)}/${item.unit}` : ""}`}
           </div>
         </div>
         {item.is_extra && (
           <form action={removeListItem}>
             <input type="hidden" name="id" value={item.id} />
-            <SubmitButton iconOnly aria-label={`Hapus ${item.name}`} className="flex h-9 w-9 items-center justify-center rounded-full text-muted">
+            <ConfirmButton
+              aria-label={`Hapus ${item.name} dari keranjang`} title={`Hapus ${item.name}?`} confirmLabel="Ya, hapus"
+              message={<>{item.name} dikeluarkan dari daftar belanja ini.</>}
+              className="flex h-11 w-11 items-center justify-center rounded-full text-muted"
+            >
               <X className="h-4 w-4" aria-hidden />
-            </SubmitButton>
+            </ConfirmButton>
           </form>
         )}
       </div>
@@ -374,11 +402,16 @@ function Row({
       >
         <div className="overflow-hidden">
           <div className="flex flex-wrap items-center gap-2 pl-11 pt-3">
-            <div className="flex items-center rounded-xl border border-border bg-surface" role="group" aria-label="Jumlah dibeli">
+            <div className="flex items-center rounded-xl border border-control bg-surface" role="group" aria-label="Jumlah dibeli">
               <button className="flex h-10 w-10 items-center justify-center text-muted" aria-label="Kurangi" onClick={() => { haptic("tap"); step(-1); }}>
                 <Minus className="h-4 w-4" aria-hidden />
               </button>
-              <span key={item.qty_bought} className="animate-tick w-9 text-center font-bold tabular-nums">{fmtQty(item.qty_bought)}</span>
+              <input
+                inputMode="decimal" aria-label={`Jumlah ${item.name} yang dibeli`} value={qtyText}
+                onChange={(e) => setQtyText(e.target.value.replace(/[^0-9.,]/g, "").slice(0, 7))} onBlur={commitQty}
+                onKeyDown={(e) => e.key === "Enter" && e.currentTarget.blur()} onFocus={(e) => e.currentTarget.select()}
+                className="w-14 bg-transparent text-center text-base font-bold tabular-nums outline-none focus:text-primary"
+              />
               <button className="flex h-10 w-10 items-center justify-center text-primary" aria-label="Tambah" onClick={() => { haptic("tap"); step(1); }}>
                 <Plus className="h-4 w-4" aria-hidden />
               </button>

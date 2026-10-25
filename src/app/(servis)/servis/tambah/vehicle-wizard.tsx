@@ -42,12 +42,11 @@ export function VehicleWizard({ today }: { today: string }) {
     e.preventDefault();
     setError("");
     if (!name.trim()) return setError("Isi nama kendaraan.");
-    if (km === "") return setError("Isi km di odometer saat ini.");
+    if (km === "") return setError("Isi angka km di speedometer saat ini.");
     const chosen = rows.filter((r) => r.on);
-    if (chosen.length === 0) return setError("Pilih minimal satu part.");
+    if (chosen.length === 0) return setError("Pilih minimal satu komponen.");
     for (const r of chosen) {
-      if (!r.name.trim()) return setError("Ada part tanpa nama.");
-      if (!r.intervalKm && !r.intervalMonths) return setError(`Part "${r.name}" butuh interval km atau bulan.`);
+      if (!r.name.trim()) return setError("Ada komponen yang belum diberi nama.");
     }
     start(async () => {
       let res;
@@ -85,7 +84,7 @@ export function VehicleWizard({ today }: { today: string }) {
         </div>
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <label className="label" htmlFor="plat">Plat (opsional)</label>
+            <label className="label" htmlFor="plat">Plat nomor <span className="font-normal text-muted">(boleh kosong)</span></label>
             <input id="plat" className="input uppercase" placeholder="B 1234 XYZ" maxLength={12} value={plate} onChange={(e) => setPlate(e.target.value)} />
           </div>
           <div>
@@ -95,8 +94,8 @@ export function VehicleWizard({ today }: { today: string }) {
         </div>
       </section>
 
-      <section aria-label="Part">
-        <h2 className="section-title">Part yang diservis berkala</h2>
+      <section aria-labelledby="komponen-h">
+        <h2 id="komponen-h" className="section-title">Komponen yang rutin diganti</h2>
         <p className="-mt-1 mb-3 text-xs text-muted">
           Interval di bawah adalah perkiraan umum, sesuaikan dengan buku servis kendaraanmu. Isi &quot;terakhir diganti&quot; supaya pengingat langsung akurat; boleh dikosongkan dan dicatat belakangan.
         </p>
@@ -107,12 +106,12 @@ export function VehicleWizard({ today }: { today: string }) {
                 <button
                   type="button" role="checkbox" aria-checked={r.on} aria-label={`Pakai ${r.name}`}
                   onClick={() => patch(r.key, { on: !r.on })}
-                  className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full border-2 transition ${r.on ? "border-primary bg-primary text-primary-fg" : "border-border"}`}
+                  className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full border-2 transition ${r.on ? "border-primary bg-primary text-primary-fg" : "border-control"}`}
                 >
                   {r.on && <Check className="h-4 w-4" strokeWidth={3} aria-hidden />}
                 </button>
                 <div className="min-w-0 flex-1">
-                  <div className="truncate font-semibold">{r.name || "Part baru"}</div>
+                  <div className="truncate font-semibold">{r.name || "Komponen baru"}</div>
                   <div className="truncate text-xs text-muted">
                     {intervalText(r.intervalKm ? Number(r.intervalKm) : null, r.intervalMonths ? Number(r.intervalMonths) : null)}
                     {r.lastKm ? ` · terakhir ${Number(r.lastKm).toLocaleString("id-ID")} km` : ""}
@@ -120,7 +119,7 @@ export function VehicleWizard({ today }: { today: string }) {
                 </div>
                 {r.on && (
                   <button type="button" aria-expanded={r.open} aria-label={`Ubah ${r.name}`} onClick={() => patch(r.key, { open: !r.open })}
-                    className="flex h-9 w-9 items-center justify-center rounded-full text-muted">
+                    className="flex h-11 w-11 items-center justify-center rounded-full text-muted">
                     <ChevronDown className={`h-5 w-5 transition ${r.open ? "rotate-180" : ""}`} aria-hidden />
                   </button>
                 )}
@@ -128,19 +127,19 @@ export function VehicleWizard({ today }: { today: string }) {
               {r.on && r.open && (
                 <div className="animate-pop mt-3 grid grid-cols-2 gap-2">
                   {r.key.startsWith("custom") && (
-                    <input className="input col-span-2" placeholder="Nama part" maxLength={40} value={r.name} onChange={(e) => patch(r.key, { name: e.target.value })} aria-label="Nama part" />
+                    <label className="col-span-2 flex flex-col"><span className="label">Nama komponen</span><input className="input" placeholder="mis. Kampas kopling" maxLength={40} value={r.name} onChange={(e) => patch(r.key, { name: e.target.value })} /></label>
                   )}
                   <div>
-                    <label className="label" htmlFor={`ik-${r.key}`}>Interval (km)</label>
+                    <label className="label" htmlFor={`ik-${r.key}`}>Ganti tiap (km)</label>
                     <input id={`ik-${r.key}`} className="input" inputMode="numeric" placeholder="mis. 10000" value={r.intervalKm} onChange={(e) => patch(r.key, { intervalKm: digits(e.target.value).slice(0, 6) })} />
                   </div>
                   <div>
-                    <label className="label" htmlFor={`im-${r.key}`}>Interval (bulan)</label>
+                    <label className="label" htmlFor={`im-${r.key}`}>Atau tiap (bulan)</label>
                     <input id={`im-${r.key}`} className="input" inputMode="numeric" placeholder="mis. 6" value={r.intervalMonths} onChange={(e) => patch(r.key, { intervalMonths: digits(e.target.value).slice(0, 3) })} />
                   </div>
                   <div>
                     <label className="label" htmlFor={`lk-${r.key}`}>Terakhir diganti (km)</label>
-                    <input id={`lk-${r.key}`} className="input" inputMode="numeric" placeholder="opsional" value={r.lastKm} onChange={(e) => patch(r.key, { lastKm: digits(e.target.value).slice(0, 7) })} />
+                    <input id={`lk-${r.key}`} className="input" inputMode="numeric" placeholder="boleh kosong" value={r.lastKm} onChange={(e) => patch(r.key, { lastKm: digits(e.target.value).slice(0, 7) })} />
                   </div>
                   <div>
                     <label className="label" htmlFor={`lo-${r.key}`}>Tanggalnya</label>

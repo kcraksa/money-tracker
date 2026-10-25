@@ -32,7 +32,7 @@ export default async function CatatServisPage({ searchParams }: { searchParams: 
       defaultId={v ?? vehicles[0].vehicle.id}
       vehicles={vehicles.map((o) => ({
         id: o.vehicle.id, name: o.vehicle.name, kind: o.vehicle.kind, km: o.vehicle.odometer_km,
-        parts: o.parts.map((p) => ({ id: p.id, name: p.name, status: p.status.status, hint: dueText(p.status) })),
+        parts: o.parts.map((p) => ({ id: p.id, name: p.name, status: p.status.status, hint: p.interval_km || p.interval_months ? dueText(p.status) : "Tanpa pengingat" })),
       }))}
     />
   );

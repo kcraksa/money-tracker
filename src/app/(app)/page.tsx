@@ -4,6 +4,7 @@ import { forecast } from "@/lib/forecast";
 import { QUESTS, computeStreak, questProgress } from "@/lib/gamification";
 import { dueDateInPeriod, elapsedDays, isOverdue, periodLabel, rangeEnd, shortDate, totalDays } from "@/lib/period";
 import { loadPeriodContext } from "@/lib/server/period";
+import { readSimpleMode } from "@/lib/server/simple-mode";
 import { loadQuestContext } from "@/lib/server/xp";
 import type { Category } from "@/lib/types";
 import { HomeView } from "./home-view";
@@ -12,6 +13,7 @@ export const metadata = { title: "Beranda" };
 
 export default async function BerandaPage() {
   const { supabase, me } = await getCtx();
+  const simple = await readSimpleMode();
   const today = todayISO();
   const { period, periodId, budgets } = await loadPeriodContext(supabase, today);
 
@@ -42,6 +44,7 @@ export default async function BerandaPage() {
 
   return (
     <HomeView
+      simple={simple}
       greeting={greeting()}
       name={me.display_name}
       periodLabel={periodLabel(period)}

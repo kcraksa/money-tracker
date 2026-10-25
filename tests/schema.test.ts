@@ -29,6 +29,7 @@ beforeAll(async () => {
   for (const f of ["0001_init.sql", "0002_period_income_store.sql", "0003_stock_check.sql", "0004_service_record.sql"]) {
     await db.exec(readFileSync(`supabase/migrations/${f}`, "utf8"));
   }
+  // 0005 dijalankan di dalam tes servis: sebelum itu, part tanpa interval ditolak.
   await db.exec(`
     grant select, insert, update, delete on all tables in schema public to authenticated;
   `);
@@ -100,6 +101,26 @@ describe("skema & RLS", () => {
     expect((await db.query("select * from expense")).rows).toHaveLength(1);
     await as(C); // rumah tangga lain tidak
     expect((await db.query("select * from expense")).rows).toHaveLength(0);
+  });
+
+  it("mengubah catatan: hanya pencatat aslinya; pasangan ditolak, rumah tangga lain tidak melihatnya", async () => {
+    await as(A);
+    const e = (await db.query<{ id: string }>("select id from expense limit 1")).rows[0];
+    const cat = (await db.query<{ id: string }>("select id from category where name = 'Sayur'")).rows[0];
+    const mine = await db.query<{ amount: string; spent_on: string }>(
+      "update expense set amount = 17500, category_id = $2, spent_on = '2026-10-16', note = 'diperbaiki' where id = $1 returning amount, spent_on::text",
+      [e.id, cat.id],
+    );
+    expect(Number(mine.rows[0].amount)).toBe(17500);
+    expect(mine.rows[0].spent_on).toBe("2026-10-16");
+
+    await as(B); // pasangan melihat barisnya tetapi ditolak aturan akses (42501), bukan diam-diam tidak berubah
+    await expect(db.query("update expense set amount = 1 where id = $1 returning id", [e.id])).rejects.toMatchObject({ code: "42501" });
+    await as(A);
+    expect(Number((await db.query<{ amount: string }>("select amount from expense where id = $1", [e.id])).rows[0].amount)).toBe(17500);
+
+    await as(C); // rumah tangga lain tidak melihat maupun mengubah
+    expect((await db.query("update expense set amount = 1 where id = $1 returning id", [e.id])).rows).toHaveLength(0);
   });
 
   it("xp_event idempoten lewat ref", async () => {
@@ -234,7 +255,7 @@ describe("skema & RLS", () => {
     let vehicle = "";
     const parts: Record<string, string> = {};
 
-    it("kendaraan & part: terisolasi per rumah tangga, part wajib punya interval", async () => {
+    it("kendaraan & part: terisolasi per rumah tangga; sebelum migrasi 0005 part wajib punya interval", async () => {
       await as(A);
       const h = (await db.query<{ id: string }>("select id from household")).rows[0].id;
       vehicle = (await db.query<{ id: string }>(
@@ -252,6 +273,24 @@ describe("skema & RLS", () => {
       await as(C);
       expect((await db.query("select * from vehicle")).rows).toHaveLength(0);
       expect((await db.query("select * from service_part")).rows).toHaveLength(0);
+    });
+
+    it("migrasi 0005: part boleh tanpa interval (hanya riwayat), aman dijalankan dua kali, interval lain tetap diperiksa", async () => {
+      await db.exec("reset role");
+      await db.exec(readFileSync("supabase/migrations/0005_flexible_parts.sql", "utf8"));
+      await db.exec(readFileSync("supabase/migrations/0005_flexible_parts.sql", "utf8"));
+      await as(A);
+      const h = (await db.query<{ id: string }>("select id from household")).rows[0].id;
+      const r = await db.query<{ interval_km: number | null; interval_months: number | null }>(
+        "insert into service_part (household_id, vehicle_id, name) values ($1,$2,'Tanpa pengingat') returning interval_km, interval_months",
+        [h, vehicle],
+      );
+      expect(r.rows[0]).toEqual({ interval_km: null, interval_months: null });
+      // Nilai tidak masuk akal tetap ditolak.
+      await expect(
+        db.query("insert into service_part (household_id, vehicle_id, name, interval_km) values ($1,$2,'Nol',0)", [h, vehicle]),
+      ).rejects.toThrow(/check/);
+      await db.query("delete from service_part where name = 'Tanpa pengingat'");
     });
 
     it("record_odometer: memperbarui km dan menyimpan riwayat", async () => {

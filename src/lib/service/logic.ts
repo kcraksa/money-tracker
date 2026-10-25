@@ -38,6 +38,8 @@ export function partStatus(
   p: PartInput,
   ctx: { currentKm: number; today: string; kmPerDay: number | null },
 ): PartStatus {
+  // Tanpa interval = hanya dicatat riwayatnya, tidak ada pengingat.
+  if (!p.intervalKm && !p.intervalMonths) return UNKNOWN;
   if (p.lastKm === null || p.lastOn === null) return UNKNOWN;
 
   let dueKm: number | null = null;

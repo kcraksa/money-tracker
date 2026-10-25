@@ -13,7 +13,7 @@ import type { ListItem, ShoppingList } from "@/lib/types";
 import { ShoppingChecklist } from "./shopping-checklist";
 import { SubmitButton } from "@/components/submit-button";
 
-export const metadata = { title: "Checklist belanja" };
+export const metadata = { title: "Daftar belanja" };
 
 export default async function ChecklistPage() {
   const { supabase } = await getCtx();
@@ -46,12 +46,12 @@ export default async function ChecklistPage() {
         ) : (
           <>
             <p className="max-w-xs text-sm text-muted">
-              Checklist dibuat otomatis dari rekomendasi: kebutuhan bulanan dikurangi stok di rumah.
+              Daftar belanja dibuat otomatis: kebutuhan sebulan dikurangi stok yang masih ada di rumah.
             </p>
             <Link href="/checklist/cek" transitionTypes={["nav-forward"]} className="btn-primary mt-1">
               <ClipboardCheck className="h-[18px] w-[18px]" aria-hidden /> Cek stok dulu (disarankan)
             </Link>
-            <form action={createList}><SubmitButton pendingLabel="Membuat…" className="btn-ghost text-sm">Lewati, buat checklist sekarang</SubmitButton></form>
+            <form action={createList}><SubmitButton pendingLabel="Membuat…" className="btn-ghost text-sm">Lewati, buat daftar belanja sekarang</SubmitButton></form>
           </>
         )}
       </EmptyState>
@@ -70,9 +70,9 @@ export default async function ChecklistPage() {
     return (
       <EmptyState icon={<Check className="h-8 w-8" />} title={`Belanja ${label} selesai`}>
         <p className="max-w-xs text-sm text-muted">
-          Lihat hasilnya: rekomendasi vs yang dibeli, dan uang yang dihemat.
+          Lihat hasilnya: rencana vs yang dibeli, dan uang yang dihemat.
         </p>
-        <Link href={`/evaluasi?bulan=${month}`} className="btn-primary mt-1">Lihat evaluasi</Link>
+        <Link href={`/evaluasi?bulan=${month}`} className="btn-primary mt-1">Lihat laporan</Link>
       </EmptyState>
     );
   }
@@ -96,7 +96,7 @@ export default async function ChecklistPage() {
       {suggestCheck && (
         <Link href="/checklist/cek" transitionTypes={["nav-forward"]} className="flex items-center gap-3 rounded-2xl bg-primary-soft p-3.5 text-sm">
           <ClipboardCheck className="h-5 w-5 shrink-0 text-primary" aria-hidden />
-          <span className="flex-1"><b>Sudah cek stok di rumah?</b> Cek dulu supaya rekomendasi belanja akurat.</span>
+          <span className="flex-1"><b>Sudah cek stok di rumah?</b> Hitung dulu barang yang masih ada supaya daftar belanja tepat.</span>
           <ChevronRight className="h-4 w-4 shrink-0 text-primary" aria-hidden />
         </Link>
       )}

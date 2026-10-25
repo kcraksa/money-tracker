@@ -9,10 +9,10 @@ export function OdometerButton({ vehicle, highlight }: { vehicle: { id: string; 
   return (
     <>
       <button
-        onClick={() => { haptic("tap"); setOpen(true); }}
-        className={`min-h-10 shrink-0 rounded-xl px-4 text-sm font-semibold transition active:scale-95 ${highlight ? "bg-primary text-primary-fg" : "border border-border bg-surface"}`}
+        onClick={() => { haptic("tap"); setOpen(true); }} aria-label={`Isi km ${vehicle.name}`}
+        className={`min-h-11 shrink-0 rounded-xl px-4 text-sm font-semibold transition active:scale-95 ${highlight ? "bg-primary text-primary-fg" : "border border-control bg-surface"}`}
       >
-        Update km
+        Isi km
       </button>
       <OdometerSheet open={open} onClose={() => setOpen(false)} vehicle={vehicle} />
     </>

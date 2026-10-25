@@ -17,12 +17,15 @@ export type NavTab = {
 const MONEY_TABS: NavTab[] = [
   { href: "/", label: "Beranda", Icon: Home },
   { href: "/checklist", label: "Belanja", Icon: ShoppingCart },
-  { href: "/catat", label: "Catat", Icon: Plus, primary: true },
-  { href: "/evaluasi", label: "Evaluasi", Icon: BarChart3 },
+  { href: "/catat", label: "Catat", Icon: Plus, primary: true }, // label = tulisan di bawah tombol tengah
+  { href: "/evaluasi", label: "Laporan", Icon: BarChart3 },
   { href: "/pencapaian", label: "Prestasi", Icon: Trophy },
 ];
 
-export function BottomNav({ tabs = MONEY_TABS, fabLabel = "Catat pengeluaran" }: { tabs?: NavTab[]; fabLabel?: string }) {
+export function BottomNav({
+  tabs: allTabs = MONEY_TABS, fabLabel = "Catat pengeluaran", hide = [],
+}: { tabs?: NavTab[]; fabLabel?: string; /** href tab yang disembunyikan (mis. Prestasi di mode sederhana) */ hide?: string[] }) {
+  const tabs = allTabs.filter((t) => !hide.includes(t.href));
   const pathname = usePathname();
   // Tab yang disentuh langsung menyala tanpa menunggu halaman tujuan selesai dimuat.
   // Dipakai hanya selama masih di halaman asal; begitu pathname berubah, nilai sebenarnya yang berlaku.
@@ -46,15 +49,18 @@ export function BottomNav({ tabs = MONEY_TABS, fabLabel = "Catat pengeluaran" }:
                 <Link
                   href={href} aria-label={fabLabel} aria-current={on ? "page" : undefined}
                   onClick={() => { haptic("tap"); setTap({ href, from: pathname }); }}
-                  className="-my-5 flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-hero-from to-hero-to text-white shadow-float ring-4 ring-bg transition active:scale-95"
+                  className="group -mt-7 flex flex-col items-center gap-0.5 text-xs font-bold text-primary transition active:scale-95"
                 >
-                  <Icon className="h-7 w-7" strokeWidth={2.5} />
+                  <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-hero-from to-hero-to text-white shadow-float ring-4 ring-bg">
+                    <Icon className="h-7 w-7" strokeWidth={2.5} aria-hidden />
+                  </span>
+                  <span>{label}</span>
                 </Link>
               ) : (
                 <Link
                   href={href} aria-current={on ? "page" : undefined}
                   onClick={() => { haptic("tap"); setTap({ href, from: pathname }); }}
-                  className={`flex min-h-14 w-full flex-col items-center justify-center gap-0.5 rounded-2xl px-1 text-[11px] font-medium transition ${
+                  className={`flex min-h-14 w-full flex-col items-center justify-center gap-0.5 rounded-2xl px-1 text-xs font-semibold transition ${
                     on ? "text-primary" : "text-muted hover:text-fg"
                   }`}
                 >

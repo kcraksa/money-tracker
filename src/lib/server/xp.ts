@@ -84,7 +84,7 @@ export async function syncQuests(sb: SupabaseClient, householdId: string, today:
 
 /**
  * Tutup buku periode sebelumnya sekali saja: XP keluarga per kategori harian yang aman,
- * dan badge "Budget Aman" bila semuanya aman.
+ * dan lencana "Anggaran Aman" bila semuanya aman.
  */
 export async function settlePreviousPeriod(sb: SupabaseClient, householdId: string, today: string) {
   const ctx = await loadPeriodContext(sb, today);

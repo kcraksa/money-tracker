@@ -1,14 +1,16 @@
 import { getCtx } from "@/lib/ctx";
 import { addDays, todayISO } from "@/lib/date";
 import { frequentExpenses } from "@/lib/frequent";
+import { readSimpleMode } from "@/lib/server/simple-mode";
 import type { Category } from "@/lib/types";
 import { CatatForm } from "./catat-form";
 import { RecentList } from "./recent-list";
 
-export const metadata = { title: "Catat" };
+export const metadata = { title: "Catat pengeluaran" };
 
 export default async function CatatPage() {
   const { supabase, members, me } = await getCtx();
+  const simple = await readSimpleMode();
 
   const today = todayISO();
   const [cats, quicks, recent, history] = await Promise.all([
@@ -65,12 +67,14 @@ export default async function CatatPage() {
     mine: e.member_id === me.id,
     category: (anyCat.get(e.category_id)?.name as string) ?? "?",
     icon: (anyCat.get(e.category_id)?.icon as string) ?? "💸",
+    categoryId: e.category_id as string,
+    editable: e.member_id === me.id && catById.has(e.category_id as string),
   }));
 
   return (
     <div className="flex flex-col gap-5">
-      <CatatForm categories={categories} quicks={quickList} today={today} />
-      <RecentList rows={recentRows} today={today} />
+      <CatatForm categories={categories} quicks={quickList} today={today} simple={simple} />
+      <RecentList rows={recentRows} today={today} categories={categories.map((c) => ({ id: c.id, name: c.name, icon: c.icon }))} />
     </div>
   );
 }

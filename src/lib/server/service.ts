@@ -72,7 +72,8 @@ export async function loadServiceOverview(sb: SupabaseClient, today: string): Pr
     return {
       vehicle,
       parts: byUrgency(views),
-      summary: summarize(views.map((p) => p.status.status)),
+      // Komponen tanpa interval tidak punya pengingat, jadi tidak ikut menentukan status kendaraan.
+      summary: summarize(views.filter((p) => p.interval_km || p.interval_months).map((p) => p.status.status)),
       kmPerDay: rate,
       nudge: kmNudge(vehicle.odometer_on, vehicle.remind_days, today),
     };

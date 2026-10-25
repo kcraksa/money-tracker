@@ -4,7 +4,7 @@ export default function manifest(): MetadataRoute.Manifest {
   return {
     name: "Money Tracker Rumah Tangga",
     short_name: "Catatan Kita",
-    description: "Catat pengeluaran rumah tangga berdua, cepat dan menyenangkan.",
+    description: "Catat uang keluarga dengan mudah, bisa berdua atau sendiri.",
     start_url: "/menu",
     scope: "/",
     display: "standalone",

@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { getCtx } from "@/lib/ctx";
 import { todayISO } from "@/lib/date";
+import { rupiah } from "@/lib/format";
 import { XP, savingPoints } from "@/lib/gamification";
 import { learnOrder, type OrderEntry } from "@/lib/route";
 import { evaluate, lineTotal } from "@/lib/shopping";
@@ -135,12 +136,12 @@ export async function finishList(form: FormData) {
   const period = String(claimed.month);
   await award(supabase, {
     householdId, memberId: me.id, kind: "saving", points: savingPoints(ev.saving),
-    ref: `saving:${listId}`, note: `Hemat belanja ${ev.saving}`,
+    ref: `saving:${listId}`, note: `Hemat belanja ${rupiah(ev.saving)}`,
   });
   if (ev.withinRecommendation) {
     await award(supabase, {
       householdId, memberId: me.id, kind: "bonus", points: XP.bonus,
-      ref: `bonus:${listId}`, note: "Belanja sesuai rekomendasi",
+      ref: `bonus:${listId}`, note: "Belanja sesuai daftar",
     });
     await grantBadge(supabase, householdId, "belanja_sesuai", period, me.id);
   }

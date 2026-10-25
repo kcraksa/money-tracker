@@ -3,7 +3,7 @@ import { todayISO } from "@/lib/date";
 import { loadServiceOverview } from "@/lib/server/service";
 import { ServisHome } from "./servis-home";
 
-export const metadata = { title: "Service Record" };
+export const metadata = { title: "Servis Kendaraan" };
 
 export default async function ServisPage() {
   const { supabase } = await getCtx();
