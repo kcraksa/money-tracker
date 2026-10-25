@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { AlertTriangle, Check, ChevronRight, Flame, KeyIcon, LayoutGrid, Plus, Settings, Sparkles, Wallet } from "@/components/icons";
+import { AlertTriangle, Check, ChevronRight, Flame, KeyIcon, LayoutGrid, Pencil, Plus, Settings, Sparkles, Wallet } from "@/components/icons";
 import { CategoryIcon } from "@/components/category-icon";
 import { PageHeader } from "@/components/page-header";
 import { ProgressBar } from "@/components/progress-bar";
@@ -99,7 +99,7 @@ export function HomeView(p: HomeProps) {
       {p.overdue && (
         <Link href="/rencana" transitionTypes={["nav-forward"]} className="flex items-center gap-3 rounded-2xl bg-warn-bg p-3.5 text-sm text-warn">
           <AlertTriangle className="h-5 w-5 shrink-0" aria-hidden />
-          <span className="flex-1"><b>Sudah lebih dari sebulan sejak gajian terakhir.</b> Ketuk di sini untuk mencatat gajian baru.</span>
+          <span className="flex-1"><b>Sudah lebih dari sebulan sejak gajian terakhir.</b> Ketuk di sini untuk mencatat gajian baru dan mengatur anggarannya.</span>
           <ChevronRight className="h-4 w-4 shrink-0" aria-hidden />
         </Link>
       )}
@@ -125,10 +125,16 @@ export function HomeView(p: HomeProps) {
       )}
 
       <section aria-labelledby="sisa-h">
-        <h2 id="sisa-h" className="section-title">Sisa uang tiap pos</h2>
+        <h2 id="sisa-h" className="section-title">
+          <span>Pengeluaran sehari-hari</span>
+          <Link href="/rencana" transitionTypes={["nav-forward"]} className="flex min-h-11 items-center gap-1 rounded-full bg-primary-soft px-3 text-sm font-semibold text-primary">
+            <Pencil className="h-3.5 w-3.5" aria-hidden /> Atur anggaran
+          </Link>
+        </h2>
+        <p className="-mt-1 mb-2.5 text-sm text-muted">Jumlahnya berubah-ubah, mis. makan dan bensin. Batasnya bisa kamu ubah kapan saja.</p>
         {noBudgets && (
           <Link href="/rencana" transitionTypes={["nav-forward"]} className="card mb-2 flex items-center justify-between gap-3 text-sm">
-            <span>Anggaran belum diatur. Atur dulu supaya sisa uang tiap pos terlihat.</span>
+            <span>Anggaran belum diatur. Atur dulu supaya sisa uang tiap kategori terlihat.</span>
             <span className="shrink-0 font-semibold text-primary">Atur</span>
           </Link>
         )}
@@ -167,9 +173,9 @@ export function HomeView(p: HomeProps) {
       {p.income ? (
         <section aria-labelledby="masuk-h">
           <h2 id="masuk-h" className="section-title">
-            <span>Uang masuk</span>
+            <span>Uang masuk periode ini</span>
             <Link href="/rencana" transitionTypes={["nav-forward"]} className="flex min-h-11 items-center gap-0.5 text-sm font-semibold text-primary">
-              Atur <ChevronRight className="h-4 w-4" aria-hidden />
+              Ubah <ChevronRight className="h-4 w-4" aria-hidden />
             </Link>
           </h2>
           <dl className="card grid grid-cols-3 divide-x divide-border p-0 text-center">
@@ -187,7 +193,7 @@ export function HomeView(p: HomeProps) {
           <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary-soft text-primary"><Wallet className="h-5 w-5" aria-hidden /></span>
           <span className="flex-1">
             <b className="block text-[15px]">{p.hasPeriod ? "Catat pemasukan periode ini" : "Catat gajian"}</b>
-            <span className="text-muted">Lalu bagi uangnya ke tiap pos anggaran.</span>
+            <span className="text-muted">Lalu bagi uangnya ke tiap kategori pengeluaran.</span>
           </span>
           <ChevronRight className="h-5 w-5 shrink-0 text-muted" aria-hidden />
         </Link>
@@ -196,6 +202,7 @@ export function HomeView(p: HomeProps) {
       {p.bills.length > 0 && (
         <section aria-labelledby="tagihan-h">
           <h2 id="tagihan-h" className="section-title">Tagihan bulanan</h2>
+          <p className="-mt-1 mb-2.5 text-sm text-muted">Jumlahnya tetap dan dibayar sekali sebulan, mis. listrik. Ketuk Bayar kalau sudah lunas.</p>
           <ul className="card divide-y divide-border p-0">
             {p.bills.map((b) => <BillRow key={b.categoryId} {...b} />)}
           </ul>

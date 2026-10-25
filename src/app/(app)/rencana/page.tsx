@@ -12,12 +12,12 @@ import { loadPeriodContext } from "@/lib/server/period";
 import { AllocationForm, type AllocCategory } from "./allocation-form";
 import { SubmitButton } from "@/components/submit-button";
 
-export const metadata = { title: "Rencana gajian" };
+export const metadata = { title: "Atur anggaran" };
 
 const ERRORS: Record<string, string> = {
   nominal: "Isi nominal pemasukan.",
   periode: "Gagal menyimpan gajian baru, coba lagi.",
-  nama: "Isi nama pos anggaran.",
+  nama: "Isi nama kategori.",
 };
 
 export default async function RencanaPage({
@@ -45,7 +45,23 @@ export default async function RencanaPage({
 
   return (
     <div className="flex flex-col gap-5">
-      <PageHeader title="Rencana gajian" subtitle={periodLabel(period)} back="/" />
+      <PageHeader title="Atur anggaran" subtitle={periodLabel(period)} back="/" />
+
+      <section aria-labelledby="cara-h" className="card flex flex-col gap-3 p-5">
+        <h2 id="cara-h" className="text-base font-semibold tracking-tight">Cara kerjanya</h2>
+        <ol className="flex flex-col gap-2.5 text-[15px]">
+          {[
+            <><b>Catat gajian</b> yang masuk (langkah 1 di bawah).</>,
+            <><b>Bagi uangnya</b> ke tiap kategori, mis. makan Rp 2 juta, listrik Rp 450 ribu (langkah 2).</>,
+            <>Selama sebulan, <b>pantau sisanya di Beranda</b>. Kamu bisa kembali ke sini kapan saja untuk mengubah angkanya.</>,
+          ].map((t, i) => (
+            <li key={i} className="flex gap-3">
+              <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary-soft text-sm font-bold text-primary" aria-hidden>{i + 1}</span>
+              <span className="pt-0.5">{t}</span>
+            </li>
+          ))}
+        </ol>
+      </section>
 
       {sp.tersimpan && (
         <p role="status" className="animate-pop flex items-center gap-2 rounded-2xl bg-ok-bg p-3.5 text-sm font-medium text-ok">
@@ -64,7 +80,7 @@ export default async function RencanaPage({
 
       <section aria-label="Pemasukan" className="card flex flex-col gap-4 p-5">
         <div className="flex items-baseline justify-between">
-          <h2 className="text-base font-semibold tracking-tight">Pemasukan</h2>
+          <h2 className="text-base font-semibold tracking-tight">1. Catat gajian / pemasukan</h2>
           {incomeTotal > 0 && <span className="text-lg font-extrabold tabular-nums">{rupiah(incomeTotal)}</span>}
         </div>
 
@@ -120,26 +136,26 @@ export default async function RencanaPage({
       </section>
 
       <section aria-labelledby="bagi-h">
-        <h2 id="bagi-h" className="section-title">Bagi uang ke tiap pos</h2>
+        <h2 id="bagi-h" className="section-title">2. Bagi uang ke tiap kategori</h2>
         <AllocationForm categories={categories} incomeTotal={incomeTotal} />
       </section>
 
-      <section aria-label="Kelola pos" className="card flex flex-col gap-4 p-5">
+      <section aria-labelledby="kelola-h" className="card flex flex-col gap-4 p-5">
         <div>
-          <h2 className="text-base font-semibold tracking-tight">Kelola pos anggaran</h2>
-          <p className="text-sm text-muted">Pos = kelompok pengeluaran, mis. Makan atau Listrik. Pos yang dihapus hilang dari daftar, tapi catatan lamanya tetap tersimpan.</p>
+          <h2 id="kelola-h" className="text-base font-semibold tracking-tight">Tambah atau hapus kategori</h2>
+          <p className="text-sm text-muted">Kategori = kelompok pengeluaran, mis. Makan atau Listrik. Kategori yang dihapus hilang dari daftar, tapi catatan lamanya tetap tersimpan.</p>
         </div>
         <ul className="flex flex-col divide-y divide-border">
           {categories.map((c) => (
             <li key={c.id} className="flex items-center gap-3 py-2.5">
               <CategoryIcon icon={c.icon} size="sm" />
               <span className="min-w-0 flex-1 truncate font-medium">{c.name}</span>
-              <span className="pill bg-surface-2 text-muted">{c.kind === "fixed" ? "Tagihan" : c.lump_sum ? "Sekali jalan" : "Harian"}</span>
+              <span className="pill bg-surface-2 text-muted">{c.kind === "fixed" ? "Tagihan bulanan" : c.lump_sum ? "Dibayar sekaligus" : "Sehari-hari"}</span>
               <form action={archiveCategory}>
                 <input type="hidden" name="id" value={c.id} />
                 <ConfirmButton
-                  aria-label={`Hapus pos ${c.name}`} title={`Hapus pos ${c.name}?`} confirmLabel="Ya, hapus pos"
-                  message={<>Pos {c.name} tidak muncul lagi di pilihan kategori. Catatan pengeluaran lamanya tetap tersimpan.</>}
+                  aria-label={`Hapus kategori ${c.name}`} title={`Hapus kategori ${c.name}?`} confirmLabel="Ya, hapus kategori"
+                  message={<>{c.name} tidak muncul lagi di pilihan kategori. Catatan pengeluaran lamanya tetap tersimpan.</>}
                   className="min-h-11 px-2 text-sm font-semibold text-danger"
                 >
                   Hapus
@@ -152,20 +168,20 @@ export default async function RencanaPage({
           <Field label="Ikon">
             <input name="icon" className="input text-center text-xl" placeholder="🍽️" maxLength={4} />
           </Field>
-          <Field label="Nama pos">
+          <Field label="Nama kategori">
             <input name="name" required className="input" placeholder="mis. Makan" maxLength={30} />
           </Field>
           <Field label="Jenis" className="col-span-2">
             <select name="kind" className="input" defaultValue="daily">
-              <option value="daily">Pengeluaran harian (ada sisa & perkiraan)</option>
-              <option value="fixed">Tagihan bulanan (sudah bayar / belum)</option>
+              <option value="daily">Sehari-hari: jumlah berubah-ubah (makan, bensin)</option>
+              <option value="fixed">Tagihan bulanan: jumlah tetap (listrik, internet)</option>
             </select>
           </Field>
           <label className="col-span-2 flex min-h-11 items-center gap-3 text-sm">
             <input type="checkbox" name="lump_sum" className="h-5 w-5 accent-[var(--primary)]" />
             Dibayar sekaligus sekali sebulan (mis. belanja bulanan)
           </label>
-          <SubmitButton pendingLabel="Menambah…" className="btn-soft col-span-2"><Plus className="h-4 w-4" aria-hidden /> Tambah pos</SubmitButton>
+          <SubmitButton pendingLabel="Menambah…" className="btn-soft col-span-2"><Plus className="h-4 w-4" aria-hidden /> Tambah kategori</SubmitButton>
         </form>
       </section>
     </div>

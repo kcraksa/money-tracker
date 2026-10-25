@@ -60,8 +60,8 @@ export default async function PengaturanPage({
       <Link href="/rencana" transitionTypes={["nav-forward"]} className="card flex items-center gap-3 p-4 transition active:scale-[0.99]">
         <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-primary-soft text-primary"><Wallet className="h-5 w-5" aria-hidden /></span>
         <span className="min-w-0 flex-1">
-          <span className="block font-semibold">Rencana gajian & anggaran</span>
-          <span className="block text-xs text-muted">Catat pemasukan, bagi ke tiap pos, kelola pos</span>
+          <span className="block font-semibold">Atur anggaran</span>
+          <span className="block text-sm text-muted">Catat gajian, bagi uang ke tiap kategori, ubah batas pengeluaran</span>
         </span>
         <ChevronRight className="h-5 w-5 text-muted" aria-hidden />
       </Link>

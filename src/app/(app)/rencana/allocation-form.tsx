@@ -23,8 +23,16 @@ export function AllocationForm({ categories, incomeTotal }: { categories: AllocC
   const tone = left < 0 ? "text-danger" : left === 0 ? "text-ok" : "text-warn";
 
   const groups = [
-    { title: "Tagihan tetap", items: categories.filter((c) => c.kind === "fixed") },
-    { title: "Pengeluaran harian", items: categories.filter((c) => c.kind === "daily") },
+    {
+      title: "Pengeluaran sehari-hari",
+      hint: "Jumlahnya berubah-ubah, mis. makan, bensin, jajan. Isi batas yang kamu mau.",
+      items: categories.filter((c) => c.kind === "daily"),
+    },
+    {
+      title: "Tagihan bulanan",
+      hint: "Jumlahnya sudah pasti dan dibayar sekali sebulan, mis. listrik, internet, cicilan. Isi nominal tagihannya.",
+      items: categories.filter((c) => c.kind === "fixed"),
+    },
   ].filter((g) => g.items.length > 0);
 
   return (
@@ -56,14 +64,17 @@ export function AllocationForm({ categories, incomeTotal }: { categories: AllocC
 
       {groups.map((g) => (
         <section key={g.title} className="card flex flex-col gap-4 p-4" aria-label={g.title}>
-          <h3 className="text-[15px] font-semibold tracking-tight">{g.title}</h3>
+          <div>
+            <h3 className="text-[15px] font-semibold tracking-tight">{g.title}</h3>
+            <p className="text-sm text-muted">{g.hint}</p>
+          </div>
           {g.items.map((c) => (
             <div key={c.id} className="flex items-center gap-3">
               <CategoryIcon icon={c.icon} size="sm" />
               <div className="min-w-0 flex-1">
                 <label className="mb-1 block truncate text-sm font-medium" htmlFor={`a_${c.id}`}>
                   {c.name}
-                  {c.lump_sum && <span className="ml-1.5 text-xs font-normal text-muted">sekali jalan</span>}
+                  {c.lump_sum && <span className="ml-1.5 text-xs font-normal text-muted">dibayar sekaligus</span>}
                 </label>
                 <div className="flex items-end gap-2">
                   <input
