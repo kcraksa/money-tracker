@@ -15,7 +15,7 @@ export type NavTab = {
 };
 
 const MONEY_TABS: NavTab[] = [
-  { href: "/", label: "Beranda", Icon: Home },
+  { href: "/", label: "Beranda", Icon: Home, match: (p) => p === "/" || ["/anggaran", "/tagihan", "/rencana"].some((x) => p.startsWith(x)) },
   { href: "/checklist", label: "Belanja", Icon: ShoppingCart },
   { href: "/catat", label: "Catat", Icon: Plus, primary: true }, // label = tulisan di bawah tombol tengah
   { href: "/evaluasi", label: "Laporan", Icon: BarChart3 },
