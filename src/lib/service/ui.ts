@@ -22,6 +22,7 @@ export const dateText = (iso: string) => `${Number(iso.slice(8, 10))} ${BULAN[Nu
 
 /** "tiap 10.000 km", "tiap 6 bulan", atau "tiap 7.000 km / 6 bulan". */
 export function intervalText(km: number | null, months: number | null): string {
+  if (!km && !months) return "tanpa pengingat";
   const bits = [km ? `${km.toLocaleString("id-ID")} km` : null, months ? `${months} bulan` : null].filter(Boolean);
   return `tiap ${bits.join(" / ")}`;
 }

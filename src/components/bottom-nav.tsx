@@ -22,7 +22,10 @@ const MONEY_TABS: NavTab[] = [
   { href: "/pencapaian", label: "Prestasi", Icon: Trophy },
 ];
 
-export function BottomNav({ tabs = MONEY_TABS, fabLabel = "Catat pengeluaran" }: { tabs?: NavTab[]; fabLabel?: string }) {
+export function BottomNav({
+  tabs: allTabs = MONEY_TABS, fabLabel = "Catat pengeluaran", hide = [],
+}: { tabs?: NavTab[]; fabLabel?: string; /** href tab yang disembunyikan (mis. Prestasi di mode sederhana) */ hide?: string[] }) {
+  const tabs = allTabs.filter((t) => !hide.includes(t.href));
   const pathname = usePathname();
   // Tab yang disentuh langsung menyala tanpa menunggu halaman tujuan selesai dimuat.
   // Dipakai hanya selama masih di halaman asal; begitu pathname berubah, nilai sebenarnya yang berlaku.

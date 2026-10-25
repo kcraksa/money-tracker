@@ -47,7 +47,6 @@ export function VehicleWizard({ today }: { today: string }) {
     if (chosen.length === 0) return setError("Pilih minimal satu komponen.");
     for (const r of chosen) {
       if (!r.name.trim()) return setError("Ada komponen yang belum diberi nama.");
-      if (!r.intervalKm && !r.intervalMonths) return setError(`Part "${r.name}" butuh interval km atau bulan.`);
     }
     start(async () => {
       let res;

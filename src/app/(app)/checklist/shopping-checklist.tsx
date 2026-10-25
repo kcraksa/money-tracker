@@ -329,6 +329,21 @@ function Row({
     save({ checked, unit_price_actual });
   }
 
+  // Jumlah bisa diketik langsung (mis. 0,5 kg), selain tombol − dan +.
+  const [qtyText, setQtyText] = useState(fmtQty(item.qty_bought));
+  const [seenQty, setSeenQty] = useState(item.qty_bought);
+  if (seenQty !== item.qty_bought) {
+    setSeenQty(item.qty_bought);
+    setQtyText(fmtQty(item.qty_bought));
+  }
+  function commitQty() {
+    const v = Number(qtyText.replace(",", "."));
+    if (!Number.isFinite(v) || qtyText.trim() === "") return setQtyText(fmtQty(item.qty_bought));
+    const q = Math.min(100000, Math.max(0, Math.round(v * 100) / 100));
+    setQtyText(fmtQty(q));
+    if (q !== item.qty_bought) { onChange({ qty_bought: q }); save({ qty_bought: q }); }
+  }
+
   function step(delta: number) {
     const q = Math.max(0, Math.round((item.qty_bought + delta) * 100) / 100);
     onChange({ qty_bought: q });
@@ -391,7 +406,12 @@ function Row({
               <button className="flex h-10 w-10 items-center justify-center text-muted" aria-label="Kurangi" onClick={() => { haptic("tap"); step(-1); }}>
                 <Minus className="h-4 w-4" aria-hidden />
               </button>
-              <span key={item.qty_bought} className="animate-tick w-9 text-center font-bold tabular-nums">{fmtQty(item.qty_bought)}</span>
+              <input
+                inputMode="decimal" aria-label={`Jumlah ${item.name} yang dibeli`} value={qtyText}
+                onChange={(e) => setQtyText(e.target.value.replace(/[^0-9.,]/g, "").slice(0, 7))} onBlur={commitQty}
+                onKeyDown={(e) => e.key === "Enter" && e.currentTarget.blur()} onFocus={(e) => e.currentTarget.select()}
+                className="w-14 bg-transparent text-center text-base font-bold tabular-nums outline-none focus:text-primary"
+              />
               <button className="flex h-10 w-10 items-center justify-center text-primary" aria-label="Tambah" onClick={() => { haptic("tap"); step(1); }}>
                 <Plus className="h-4 w-4" aria-hidden />
               </button>

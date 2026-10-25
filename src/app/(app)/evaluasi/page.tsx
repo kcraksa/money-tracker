@@ -2,7 +2,8 @@ import { getCtx } from "@/lib/ctx";
 import { todayISO } from "@/lib/date";
 import { periodLabel, resolvePeriod } from "@/lib/period";
 import { loadPeriodContext } from "@/lib/server/period";
-import { evaluate, lineTotal } from "@/lib/shopping";
+import { evaluate, isPlanned, lineTotal } from "@/lib/shopping";
+import { readSimpleMode } from "@/lib/server/simple-mode";
 import type { ListItem } from "@/lib/types";
 import { EvaluasiView } from "./evaluasi-view";
 
@@ -11,6 +12,7 @@ export const metadata = { title: "Laporan belanja" };
 export default async function EvaluasiPage({ searchParams }: { searchParams: Promise<{ bulan?: string }> }) {
   const sp = await searchParams;
   const { supabase, members } = await getCtx();
+  const simple = await readSimpleMode();
   const { starts, period } = await loadPeriodContext(supabase, todayISO());
   const current = period.start;
   const month = sp.bulan && /^\d{4}-\d{2}-\d{2}$/.test(sp.bulan) ? sp.bulan : current;
@@ -49,13 +51,14 @@ export default async function EvaluasiPage({ searchParams }: { searchParams: Pro
       state={list.status === "open" ? "open" : "done"}
       saving={ev.saving}
       completedBy={nameOf.get(list.completed_by ?? "") ?? "keluarga"}
-      xpGained={(xp.data ?? []).reduce((s, r) => s + Number(r.points), 0)}
+      xpGained={simple ? 0 : (xp.data ?? []).reduce((s, r) => s + Number(r.points), 0)}
+      simple={simple}
       withinRecommendation={ev.withinRecommendation}
       estimateTotal={ev.estimateTotal}
       recommendedActual={ev.recommendedActual}
       extrasTotal={ev.extrasTotal}
       notBoughtCount={ev.notBought.length}
-      rows={items.filter((i) => !i.is_extra).map((i) => ({
+      rows={items.filter(isPlanned).map((i) => ({
         id: i.id, name: i.name, unit: i.unit, qtyRec: i.qty_recommended, qtyBought: i.qty_bought,
         priceActual: i.unit_price_actual, skipped: !i.checked,
         diff: lineTotal(i.qty_recommended, i.unit_price_est) - lineTotal(i.qty_bought, i.unit_price_actual),

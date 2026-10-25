@@ -3,6 +3,7 @@ import { EmptyState } from "@/components/empty-state";
 import { AlertTriangle, ChevronRight, Gauge, LayoutGrid, Plus, Wrench } from "@/components/icons";
 import { MigrationNotice } from "@/components/migration-notice";
 import { PageHeader } from "@/components/page-header";
+import { MENU_PICK } from "@/lib/last-module";
 import { dueText } from "@/lib/service/logic";
 import { KIND_ICON, STATUS_UI } from "@/lib/service/ui";
 import { VehicleCard } from "./vehicle-card";
@@ -20,7 +21,7 @@ export function ServisHome({ vehicles, outdated, error }: { vehicles: VehicleOve
   return (
     <div className="flex flex-col gap-5">
       <PageHeader
-        title="Servis Kendaraan" subtitle={vehicles.length ? `${vehicles.length} kendaraan` : "Riwayat & pengingat servis"} back="/menu"
+        title="Servis Kendaraan" subtitle={vehicles.length ? `${vehicles.length} kendaraan` : "Riwayat & pengingat servis"}
         actions={
           <Link href="/servis/tambah" transitionTypes={["nav-forward"]} aria-label="Tambah kendaraan"
             className="flex min-h-11 items-center gap-1.5 rounded-full bg-primary px-3.5 text-sm font-semibold text-primary-fg shadow-card">
@@ -76,8 +77,8 @@ export function ServisHome({ vehicles, outdated, error }: { vehicles: VehicleOve
         </EmptyState>
       ) : null}
 
-      <Link href="/menu" transitionTypes={["nav-back"]} className="btn-ghost self-center text-sm">
-        <LayoutGrid className="h-4 w-4" aria-hidden /> Kembali ke menu
+      <Link href={MENU_PICK} transitionTypes={["nav-back"]} className="btn-soft self-center text-sm">
+        <LayoutGrid className="h-4 w-4" aria-hidden /> Pindah ke Keuangan Rumah
       </Link>
     </div>
   );

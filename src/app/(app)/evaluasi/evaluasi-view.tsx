@@ -16,6 +16,7 @@ export type EvalProps = {
   saving?: number;
   completedBy?: string;
   xpGained?: number;
+  simple?: boolean;
   withinRecommendation?: boolean;
   estimateTotal?: number;
   recommendedActual?: number;
@@ -127,7 +128,7 @@ export function EvaluasiView(p: EvalProps) {
       {!open && (p.notBoughtCount ?? 0) > 0 && (
         <p className="flex items-start gap-2 rounded-2xl bg-surface-2 p-3.5 text-sm text-muted">
           <Check className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
-          {p.notBoughtCount} barang belum terbeli sesuai daftar, jadi tidak dihitung hemat dan tidak dapat bonus poin.
+          {p.notBoughtCount} barang belum terbeli sesuai daftar, jadi tidak dihitung sebagai hemat{p.simple ? "." : " dan tidak dapat bonus poin."}
         </p>
       )}
     </div>

@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { addQuick, deleteQuick, saveName, signOut } from "@/app/actions/settings";
+import { addQuick, deleteQuick, saveName, setSimpleMode, signOut } from "@/app/actions/settings";
 import { CategoryIcon } from "@/components/category-icon";
 import { ConfirmButton } from "@/components/confirm-button";
 import { Field } from "@/components/field";
@@ -8,6 +8,7 @@ import { Check, ChevronRight, LogOut, Plus, Trash2, Wallet } from "@/components/
 import { CopyButton } from "@/components/copy-button";
 import { PageHeader } from "@/components/page-header";
 import { getCtx } from "@/lib/ctx";
+import { readSimpleMode } from "@/lib/server/simple-mode";
 import { rupiah } from "@/lib/format";
 import type { Category } from "@/lib/types";
 import { SubmitButton } from "@/components/submit-button";
@@ -19,6 +20,7 @@ export default async function PengaturanPage({
 }: { searchParams: Promise<{ baru?: string; tersimpan?: string }> }) {
   const sp = await searchParams;
   const { supabase, me, members, householdId } = await getCtx();
+  const simple = await readSimpleMode();
 
   const [hh, cats, quicks] = await Promise.all([
     supabase.from("household").select("name, invite_code").eq("id", householdId).single(),
@@ -45,7 +47,7 @@ export default async function PengaturanPage({
         className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-hero-from to-hero-to p-5 text-white shadow-float"
       >
         <div className="pointer-events-none absolute -right-8 -top-8 h-36 w-36 rounded-full bg-white/10" aria-hidden />
-        {sp.baru && <p className="relative mb-2 text-sm font-semibold">Rumah tangga dibuat 🎉 Kirim kode ini ke pasanganmu:</p>}
+        {sp.baru && <p className="relative mb-2 text-sm font-semibold">Catatan keluarga sudah dibuat 🎉 Kirim kode ini ke pasangan atau keluargamu:</p>}
         <div className="relative text-sm font-medium opacity-80">Kode undangan</div>
         <div className="relative my-1 text-[38px] font-extrabold tracking-[0.25em]">{code}</div>
         <div className="relative flex flex-wrap items-center justify-between gap-2">
@@ -115,6 +117,20 @@ export default async function PengaturanPage({
           <p className="text-sm text-muted">&quot;Gelap&quot; lebih nyaman di malam hari.</p>
         </div>
         <ThemeSetting />
+        <form action={setSimpleMode} className="flex flex-col gap-2 border-t border-border pt-4">
+          <input type="hidden" name="simple" value={simple ? "0" : "1"} />
+          <div>
+            <h3 className="font-semibold">Mode sederhana: {simple ? "menyala" : "mati"}</h3>
+            <p className="text-sm text-muted">
+              {simple
+                ? "Poin, level, hari berturut-turut, dan tantangan disembunyikan di perangkat ini."
+                : "Sembunyikan poin, level, hari berturut-turut, dan tantangan kalau kamu hanya ingin mencatat uang."}
+            </p>
+          </div>
+          <SubmitButton pendingLabel="Menyimpan…" className="btn-soft">
+            {simple ? "Tampilkan lagi poin & tantangan" : "Nyalakan mode sederhana"}
+          </SubmitButton>
+        </form>
       </section>
 
       <form action={saveName} className="card flex flex-col gap-3 p-5" aria-label="Nama">

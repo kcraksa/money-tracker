@@ -10,6 +10,7 @@ import { rupiah } from "@/lib/format";
 import { isOverdue, periodLabel, shortDate } from "@/lib/period";
 import { loadPeriodContext } from "@/lib/server/period";
 import { AllocationForm, type AllocCategory } from "./allocation-form";
+import { CategoryEdit } from "./category-edit";
 import { SubmitButton } from "@/components/submit-button";
 
 export const metadata = { title: "Atur anggaran" };
@@ -149,8 +150,11 @@ export default async function RencanaPage({
           {categories.map((c) => (
             <li key={c.id} className="flex items-center gap-3 py-2.5">
               <CategoryIcon icon={c.icon} size="sm" />
-              <span className="min-w-0 flex-1 truncate font-medium">{c.name}</span>
-              <span className="pill bg-surface-2 text-muted">{c.kind === "fixed" ? "Tagihan bulanan" : c.lump_sum ? "Dibayar sekaligus" : "Sehari-hari"}</span>
+              <span className="min-w-0 flex-1">
+                <span className="block font-medium">{c.name}</span>
+                <span className="block text-sm text-muted">{c.kind === "fixed" ? "Tagihan bulanan" : c.lump_sum ? "Dibayar sekaligus" : "Sehari-hari"}</span>
+              </span>
+              <CategoryEdit id={c.id} name={c.name} icon={c.icon} />
               <form action={archiveCategory}>
                 <input type="hidden" name="id" value={c.id} />
                 <ConfirmButton

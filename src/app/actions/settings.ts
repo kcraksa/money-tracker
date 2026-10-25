@@ -1,8 +1,10 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { getCtx } from "@/lib/ctx";
+import { SIMPLE_COOKIE } from "@/lib/simple-mode";
 import { createClient } from "@/lib/supabase/server";
 
 const num = (v: FormDataEntryValue | null) => Math.max(0, Math.round(Number(String(v ?? "").replace(/\D/g, "")) || 0));
@@ -32,6 +34,13 @@ export async function saveName(form: FormData) {
   if (name) await supabase.from("member").update({ display_name: name }).eq("id", me.id);
   revalidatePath("/", "layout");
   redirect("/pengaturan?tersimpan=1");
+}
+
+/** Nyalakan/matikan mode sederhana di perangkat ini (form: simple=1 untuk menyalakan). */
+export async function setSimpleMode(form: FormData) {
+  const on = form.get("simple") === "1";
+  (await cookies()).set(SIMPLE_COOKIE, on ? "1" : "0", { path: "/", maxAge: 60 * 60 * 24 * 365, sameSite: "lax" });
+  revalidatePath("/", "layout");
 }
 
 export async function signOut() {

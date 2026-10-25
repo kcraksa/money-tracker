@@ -73,7 +73,7 @@ export function LoginForm({ initialError }: { initialError: string }) {
         <Logo size={64} />
         <div>
           <h1 className="text-[32px] font-extrabold leading-tight tracking-tight">Catatan Kita</h1>
-          <p className="mt-1 text-base text-muted">Catat pengeluaran rumah tangga berdua, cepat dan tanpa ribet.</p>
+          <p className="mt-1 text-base text-muted">Catat uang keluarga dengan mudah, bisa berdua atau sendiri.</p>
         </div>
       </div>
 

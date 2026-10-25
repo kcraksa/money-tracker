@@ -5,7 +5,7 @@ import { ServiceWorker } from "@/components/service-worker";
 
 export const metadata: Metadata = {
   title: "Catatan Kita",
-  description: "Catat pengeluaran rumah tangga berdua, cepat dan menyenangkan.",
+  description: "Catat uang keluarga dengan mudah, bisa berdua atau sendiri.",
   appleWebApp: { capable: true, title: "Catatan Kita", statusBarStyle: "default" },
   icons: { apple: "/icons/apple-touch-icon.png" },
 };

@@ -13,7 +13,7 @@ export const metadata = { title: "Atur kendaraan" };
 
 const ERRORS: Record<string, string> = {
   nama: "Isi nama komponen.",
-  interval: "Isi kapan komponen perlu diganti: tiap berapa km, tiap berapa bulan, atau keduanya.",
+  migrasi: "Database perlu diperbarui dulu (jalankan migrasi 0005) agar komponen boleh tanpa pengingat.",
 };
 
 export default async function AturPage({
@@ -61,7 +61,7 @@ export default async function AturPage({
 
       <section aria-labelledby="komponen-h">
         <h2 id="komponen-h" className="section-title">Kapan tiap komponen diganti</h2>
-        <p className="-mt-1 mb-3 text-sm text-muted">Isi tiap berapa km, tiap berapa bulan, atau keduanya. Mana yang lebih dulu tercapai, itu yang dipakai untuk pengingat.</p>
+        <p className="-mt-1 mb-3 text-sm text-muted">Isi tiap berapa km, tiap berapa bulan, atau keduanya. Mana yang lebih dulu tercapai, itu yang dipakai untuk pengingat. <b>Kosongkan keduanya</b> kalau hanya ingin mencatat riwayat tanpa pengingat.</p>
         <ul className="flex flex-col gap-2.5">
           {parts.map((p) => (
             <li key={p.id} className="card p-3.5">

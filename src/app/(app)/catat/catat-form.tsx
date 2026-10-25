@@ -9,6 +9,7 @@ import { Segmented } from "@/components/segmented";
 import { Spinner } from "@/components/spinner";
 import { haptic } from "@/lib/haptics";
 import { addDays } from "@/lib/date";
+import { cleanSpentOn } from "@/lib/expense-input";
 import { rupiah } from "@/lib/format";
 import { getLocal, setLocal, useLocal } from "@/lib/local-store";
 import type { Category } from "@/lib/types";
@@ -39,12 +40,14 @@ type Props = {
   categories: Category[];
   quicks: Quick[];
   today: string;
+  /** Mode sederhana: kabar "tersimpan" tanpa poin & hari berturut-turut. */
+  simple?: boolean;
   /** Bisa diganti (mis. untuk pengujian); bawaannya Server Action asli. */
   logFn?: typeof logExpense;
   undoFn?: typeof undoExpense;
 };
 
-export function CatatForm({ categories, quicks, today, logFn = logExpense, undoFn = undoExpense }: Props) {
+export function CatatForm({ categories, quicks, today, simple = false, logFn = logExpense, undoFn = undoExpense }: Props) {
   const router = useRouter();
   const [digits, setDigits] = useState("");
   const [picked, setPicked] = useState<string>("");
@@ -53,7 +56,8 @@ export function CatatForm({ categories, quicks, today, logFn = logExpense, undoF
   try { queued = (JSON.parse(queueRaw || "[]") as unknown[]).length; } catch {}
   // Kategori sengaja tidak punya nilai awal: dipilih sendiri tiap kali supaya tidak salah masuk.
   const categoryId = categories.some((c) => c.id === picked) ? picked : "";
-  const [yesterday, setYesterday] = useState(false);
+  const [when, setWhen] = useState<"today" | "yesterday" | "other">("today");
+  const [otherDate, setOtherDate] = useState("");
   const [note, setNote] = useState("");
   const [toast, setToast] = useState<Toast | null>(null);
   const [, startRefresh] = useTransition();
@@ -135,8 +139,8 @@ export function CatatForm({ categories, quicks, today, logFn = logExpense, undoF
         }
         haptic("success");
         const bits = [`${summary} tersimpan`];
-        if (r.xp > 0) bits.push(`+${r.xp} poin`);
-        if (r.streak > 1) bits.push(`${r.streak} hari berturut-turut`);
+        if (!simple && r.xp > 0) bits.push(`+${r.xp} poin`);
+        if (!simple && r.streak > 1) bits.push(`${r.streak} hari berturut-turut`);
         if (toastId.current === p.id) show({ id: p.id, state: "saved", text: bits.join(" · ") });
         refresh();
       } catch {
@@ -150,13 +154,16 @@ export function CatatForm({ categories, quicks, today, logFn = logExpense, undoF
     })();
   }
 
+  const spentOn = when === "yesterday" ? addDays(today, -1) : when === "other" ? cleanSpentOn(otherDate, today, 31) ?? undefined : undefined;
+  const dateMissing = when === "other" && !spentOn;
+
   function submit() {
-    if (!amount || !categoryId) return;
+    if (!amount || !categoryId || dateMissing) return;
     const keterangan = note.trim();
     save(
       {
         id: crypto.randomUUID(), categoryId, amount,
-        spentOn: yesterday ? addDays(today, -1) : undefined,
+        spentOn,
         note: keterangan || undefined,
       },
       `${selected?.name ?? "Pengeluaran"}${keterangan ? ` · ${keterangan}` : ""}`,
@@ -164,7 +171,8 @@ export function CatatForm({ categories, quicks, today, logFn = logExpense, undoF
     setDigits("");
     setNote("");
     setPicked(""); // kategori berikutnya dipilih lagi
-    setYesterday(false);
+    setWhen("today");
+    setOtherDate("");
   }
 
   function quick(q: Quick, at: number) {
@@ -230,14 +238,20 @@ export function CatatForm({ categories, quicks, today, logFn = logExpense, undoF
           <span className="flex items-center gap-2 text-sm font-medium text-muted">
             {selected ? <><span aria-hidden>{selected.icon}</span> {selected.name}</> : "Belum pilih kategori"}
           </span>
-          <div className="w-44">
-            <Segmented<"today" | "yesterday">
-              label="Tanggal" size="sm" value={yesterday ? "yesterday" : "today"}
-              onSelect={(k) => setYesterday(k === "yesterday")}
-              items={[{ key: "today", label: "Hari ini" }, { key: "yesterday", label: "Kemarin" }]}
-            />
-          </div>
         </div>
+        <Segmented<"today" | "yesterday" | "other">
+          label="Tanggal pengeluaran" value={when} onSelect={setWhen}
+          items={[{ key: "today", label: "Hari ini" }, { key: "yesterday", label: "Kemarin" }, { key: "other", label: "Tanggal lain" }]}
+        />
+        {when === "other" && (
+          <label className="animate-pop mt-2 block">
+            <span className="label">Pilih tanggalnya</span>
+            <input
+              type="date" className="input" value={otherDate} max={today} min={addDays(today, -31)}
+              onChange={(e) => setOtherDate(e.target.value)}
+            />
+          </label>
+        )}
         <output
           aria-live="polite"
           className={`block py-1 text-center text-[44px] font-extrabold leading-tight tracking-tight tabular-nums ${amount ? "" : "text-muted"}`}
@@ -291,8 +305,8 @@ export function CatatForm({ categories, quicks, today, logFn = logExpense, undoF
       {/* Begitu siap disimpan, tombol menempel di atas navigasi bawah supaya selalu terlihat di HP berlayar
           pendek. Sebelum itu tidak menempel, supaya tidak menutupi tombol angka. */}
       <div className={`-mx-1 rounded-2xl p-1 ${amount && categoryId ? "sticky bottom-28 z-10 bg-bg/90 backdrop-blur" : ""}`}>
-        <button className="btn-primary min-h-14 w-full text-base disabled:opacity-100 disabled:bg-surface-2 disabled:text-muted disabled:shadow-none" onClick={submit} disabled={!amount || !categoryId}>
-          {!amount ? "Ketik jumlah dulu" : !categoryId ? "Pilih kategori dulu" : `Simpan ${rupiah(amount)}`}
+        <button className="btn-primary min-h-14 w-full text-base disabled:opacity-100 disabled:bg-surface-2 disabled:text-muted disabled:shadow-none" onClick={submit} disabled={!amount || !categoryId || dateMissing}>
+          {!amount ? "Ketik jumlah dulu" : !categoryId ? "Pilih kategori dulu" : dateMissing ? "Pilih tanggalnya dulu" : `Simpan ${rupiah(amount)}`}
         </button>
       </div>
 

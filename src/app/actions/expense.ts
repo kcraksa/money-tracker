@@ -4,6 +4,7 @@ import { after } from "next/server";
 import { getCtx } from "@/lib/ctx";
 import { addDays, todayISO } from "@/lib/date";
 import { XP, computeStreak } from "@/lib/gamification";
+import { cleanAmount, cleanSpentOn } from "@/lib/expense-input";
 import { afterActivity, award } from "@/lib/server/xp";
 
 export type LogResult =
@@ -11,7 +12,6 @@ export type LogResult =
   | { ok: false; error: string };
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-const DATE = /^\d{4}-\d{2}-\d{2}$/;
 
 export async function logExpense(input: {
   id?: string; // dibuat di klien supaya pengiriman ulang (antrean offline) tidak menggandakan
@@ -23,14 +23,9 @@ export async function logExpense(input: {
   const { supabase, me, householdId } = await getCtx();
   const today = todayISO();
 
-  const amount = Math.round(Number(input.amount));
-  if (!Number.isFinite(amount) || amount <= 0 || amount > 1_000_000_000) {
-    return { ok: false, error: "Nominal tidak valid" };
-  }
-  const spentOn =
-    input.spentOn && DATE.test(input.spentOn) && input.spentOn <= today && input.spentOn >= addDays(today, -31)
-      ? input.spentOn
-      : today;
+  const amount = cleanAmount(input.amount);
+  if (amount === null) return { ok: false, error: "Nominal tidak valid" };
+  const spentOn = cleanSpentOn(input.spentOn, today, 31) ?? today;
 
   const row = {
     ...(input.id && UUID.test(input.id) ? { id: input.id } : {}),
@@ -80,4 +75,29 @@ export async function undoExpense(id: string): Promise<{ ok: boolean }> {
   const { supabase } = await getCtx();
   const { error } = await supabase.from("expense").delete().eq("id", id);
   return { ok: !error };
+}
+
+/**
+ * Ubah catatan pengeluaran sendiri (nominal, kategori, tanggal, keterangan). Aturan akses database
+ * hanya mengizinkan pencatat aslinya; XP yang sudah diberikan tidak ditarik kembali.
+ */
+export async function updateExpense(input: {
+  id: string; categoryId: string; amount: number; spentOn: string; note?: string;
+}): Promise<{ ok: true } | { ok: false; error: string }> {
+  const { supabase } = await getCtx();
+  const amount = cleanAmount(input.amount);
+  if (amount === null) return { ok: false, error: "Isi jumlah uang dengan angka." };
+  const spentOn = cleanSpentOn(input.spentOn, todayISO());
+  if (!spentOn) return { ok: false, error: "Tanggalnya tidak bisa dipakai. Pilih tanggal dalam 2 bulan terakhir." };
+  if (!UUID.test(input.id) || !UUID.test(input.categoryId)) return { ok: false, error: "Data tidak lengkap." };
+
+  const { data, error } = await supabase.from("expense")
+    .update({ category_id: input.categoryId, amount, spent_on: spentOn, note: input.note?.trim().slice(0, 80) || null })
+    .eq("id", input.id).select("id");
+  // 42501 = aturan akses database: catatan ini milik anggota lain.
+  if (error?.code === "42501") return { ok: false, error: "Catatan ini dicatat oleh orang lain, jadi hanya dia yang bisa mengubahnya." };
+  if (error) return { ok: false, error: "Gagal menyimpan, coba lagi." };
+  // Tidak ada baris berubah = bukan catatan milikmu (atau sudah dihapus).
+  if (!data || data.length === 0) return { ok: false, error: "Catatan ini tidak bisa diubah. Mungkin dicatat oleh orang lain atau sudah dihapus." };
+  return { ok: true };
 }

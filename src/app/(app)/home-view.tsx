@@ -7,10 +7,15 @@ import { Ring } from "@/components/ring";
 import type { Forecast } from "@/lib/forecast";
 import { rupiah } from "@/lib/format";
 import { levelInfo } from "@/lib/gamification";
+import { MENU_PICK } from "@/lib/last-module";
 import type { Category } from "@/lib/types";
 import { BillRow } from "./bill-row";
+import { setSimpleMode } from "@/app/actions/settings";
+import { SubmitButton } from "@/components/submit-button";
 
 export type HomeProps = {
+  /** Mode sederhana: tanpa poin, level, hari berturut-turut, dan tantangan. */
+  simple?: boolean;
   greeting: string;
   name: string;
   periodLabel: string;
@@ -40,6 +45,14 @@ export function HomeView(p: HomeProps) {
   const noBudgets = p.rows.every((r) => r.f.budget === 0);
   const monthPct = p.totalBudget > 0 ? (p.totalSpent / p.totalBudget) * 100 : 0;
   const left = p.totalBudget - p.totalSpent;
+  // Akun yang masih kosong: tampilkan panduan mulai, bukan angka Rp 0 dan daftar kosong.
+  const steps = [
+    { done: p.income !== null, title: "Catat gajian", hint: "Uang yang masuk bulan ini.", href: "/rencana" },
+    { done: p.totalBudget > 0, title: "Bagi uang ke kategori", hint: "Mis. makan Rp 2 juta, listrik Rp 450 ribu.", href: "/rencana" },
+    { done: p.totalSpent > 0, title: "Catat pengeluaran pertama", hint: "Boleh langsung, tidak perlu menunggu langkah lain.", href: "/catat" },
+  ];
+  const setupDone = steps.every((x) => x.done);
+  const fresh = !steps.some((x) => x.done);
 
   return (
     <div className="flex flex-col gap-5">
@@ -48,9 +61,9 @@ export function HomeView(p: HomeProps) {
         subtitle={p.greeting}
         actions={
           <>
-            <Link href="/menu" transitionTypes={["nav-back"]}
+            <Link href={MENU_PICK} transitionTypes={["nav-back"]}
               className="flex min-h-11 items-center gap-1.5 rounded-full border border-border bg-surface px-3.5 text-sm font-semibold shadow-card">
-              <LayoutGrid className="h-4 w-4 text-primary" aria-hidden /> Menu
+              <LayoutGrid className="h-4 w-4 text-primary" aria-hidden /> Servis kendaraan
             </Link>
             <Link href="/pengaturan" transitionTypes={["nav-forward"]} aria-label="Pengaturan"
               className="flex h-11 w-11 items-center justify-center rounded-full border border-border bg-surface text-muted shadow-card">
@@ -60,7 +73,10 @@ export function HomeView(p: HomeProps) {
         }
       />
 
+      {!setupDone && <StartCard steps={steps} />}
+
       {/* Uang periode ini: hal pertama yang dicari */}
+      {!fresh && (
       <section aria-labelledby="uang-h" className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-hero-from to-hero-to p-5 text-white shadow-float">
         <div className="pointer-events-none absolute -right-10 -top-10 h-44 w-44 rounded-full bg-white/10" aria-hidden />
         <div className="relative flex items-baseline justify-between gap-2">
@@ -89,12 +105,15 @@ export function HomeView(p: HomeProps) {
           className="relative mt-4 flex min-h-13 items-center justify-center gap-2 rounded-xl bg-white px-4 text-base font-bold text-hero-to transition active:scale-[0.98]">
           <Plus className="h-5 w-5" aria-hidden /> Catat pengeluaran
         </Link>
-        <p className="relative mt-2 flex items-center justify-center gap-1.5 text-sm">
-          {p.loggedToday
-            ? <><Check className="h-4 w-4" aria-hidden /> Hari ini sudah dicatat</>
-            : "Hari ini belum ada catatan"}
-        </p>
+        {!p.simple && (
+          <p className="relative mt-2 flex items-center justify-center gap-1.5 text-sm">
+            {p.loggedToday
+              ? <><Check className="h-4 w-4" aria-hidden /> Hari ini sudah dicatat</>
+              : "Hari ini belum ada catatan"}
+          </p>
+        )}
       </section>
+      )}
 
       {p.overdue && (
         <Link href="/rencana" transitionTypes={["nav-forward"]} className="flex items-center gap-3 rounded-2xl bg-warn-bg p-3.5 text-sm text-warn">
@@ -124,6 +143,7 @@ export function HomeView(p: HomeProps) {
         </section>
       )}
 
+      {!fresh && (<>
       <section aria-labelledby="sisa-h">
         <h2 id="sisa-h" className="section-title">
           <span>Pengeluaran sehari-hari</span>
@@ -204,12 +224,15 @@ export function HomeView(p: HomeProps) {
           <h2 id="tagihan-h" className="section-title">Tagihan bulanan</h2>
           <p className="-mt-1 mb-2.5 text-sm text-muted">Jumlahnya tetap dan dibayar sekali sebulan, mis. listrik. Ketuk Bayar kalau sudah lunas.</p>
           <ul className="card divide-y divide-border p-0">
-            {p.bills.map((b) => <BillRow key={b.categoryId} {...b} />)}
+            {p.bills.map((b) => <BillRow key={b.categoryId} {...b} simple={p.simple} />)}
           </ul>
         </section>
       )}
 
-      {/* Poin keluarga: penyemangat, bukan informasi utama */}
+      </>)}
+
+      {/* Poin keluarga: penyemangat, bukan informasi utama. Disembunyikan di mode sederhana. */}
+      {!p.simple && !fresh && (
       <section aria-labelledby="poin-h">
         <h2 id="poin-h" className="section-title">
           <span>Poin keluarga</span>
@@ -260,9 +283,50 @@ export function HomeView(p: HomeProps) {
               </ul>
             </div>
           )}
+          <form action={setSimpleMode} className="border-t border-border pt-2">
+            <input type="hidden" name="simple" value="1" />
+            <SubmitButton pendingLabel="Menyembunyikan…" className="min-h-11 w-full text-sm font-semibold text-muted">
+              Tidak perlu poin &amp; tantangan? Sembunyikan
+            </SubmitButton>
+          </form>
         </div>
       </section>
+      )}
     </div>
+  );
+}
+
+function StartCard({ steps }: { steps: { done: boolean; title: string; hint: string; href: string }[] }) {
+  const doneCount = steps.filter((x) => x.done).length;
+  return (
+    <section aria-labelledby="mulai-h" className="card flex flex-col gap-4 border-primary/40 p-5">
+      <div>
+        <h2 id="mulai-h" className="text-xl font-bold tracking-tight">Mulai dari sini</h2>
+        <p className="mt-1 text-[15px] text-muted">
+          Tenang, tidak harus berurutan. Kamu boleh <b className="text-fg">langsung mencatat pengeluaran dulu</b>; anggaran bisa diatur belakangan.
+        </p>
+        <p className="mt-1 text-sm font-semibold text-primary">{doneCount} dari {steps.length} langkah selesai</p>
+      </div>
+      <ol className="flex flex-col gap-2.5">
+        {steps.map((x, i) => (
+          <li key={x.title}>
+            <Link
+              href={x.href} transitionTypes={["nav-forward"]}
+              className={`flex min-h-16 items-center gap-3.5 rounded-2xl border p-3.5 transition active:scale-[0.99] ${x.done ? "border-ok/40 bg-ok-bg" : "border-control bg-surface"}`}
+            >
+              <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-base font-bold ${x.done ? "bg-ok text-bg" : "bg-primary-soft text-primary"}`} aria-hidden>
+                {x.done ? <Check className="h-5 w-5" strokeWidth={3} /> : i + 1}
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="block text-[17px] font-bold">{x.title}{x.done && <span className="sr-only"> (sudah selesai)</span>}</span>
+                <span className="block text-sm text-muted">{x.hint}</span>
+              </span>
+              <ChevronRight className="h-5 w-5 shrink-0 text-muted" aria-hidden />
+            </Link>
+          </li>
+        ))}
+      </ol>
+    </section>
   );
 }
 

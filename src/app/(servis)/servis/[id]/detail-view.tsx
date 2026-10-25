@@ -60,23 +60,24 @@ export function DetailView({ id, o, visits, saved }: { id: string; o: VehicleOve
           <ul className="card divide-y divide-border p-0">
             {parts.map((p) => {
               const ui = STATUS_UI[p.status.status];
+              const noReminder = !p.interval_km && !p.interval_months;
               return (
                 <li key={p.id} className="flex flex-col gap-2 px-4 py-3.5">
                   <div className="flex items-center justify-between gap-2">
-                    <span className="truncate font-semibold">{p.name}</span>
-                    <span className={`pill shrink-0 ${ui.pill}`}>{ui.label}</span>
+                    <span className="font-semibold">{p.name}</span>
+                    <span className={`pill shrink-0 ${noReminder ? "bg-surface-2 text-muted" : ui.pill}`}>{noReminder ? "Tanpa pengingat" : ui.label}</span>
                   </div>
                   {p.status.status !== "unknown" && (
                     <ProgressBar size="sm" tone={ui.bar} pct={Math.min(100, p.status.usedPct * 100)} label={`${p.name} terpakai`} />
                   )}
                   <div className="flex flex-wrap items-baseline justify-between gap-x-3 text-xs text-muted">
-                    <span className={`font-medium ${ui.text}`}>{dueText(p.status)}</span>
-                    <span>{intervalText(p.interval_km, p.interval_months)}</span>
+                    <span className={`font-medium ${noReminder ? "" : ui.text}`}>{noReminder ? "Hanya dicatat riwayatnya" : dueText(p.status)}</span>
+                    {!noReminder && <span>{intervalText(p.interval_km, p.interval_months)}</span>}
                   </div>
                   <div className="text-xs text-muted">
                     {p.lastOn && p.lastKm !== null
                       ? <>Terakhir {dateText(p.lastOn)} · {kmText(p.lastKm)}</>
-                      : "Belum ada riwayat. Catat servis terakhirnya."}
+                      : noReminder ? "Belum ada riwayat servis." : "Belum ada riwayat. Catat servis terakhirnya."}
                     {p.status.dueKm !== null && p.status.status !== "unknown" && <> · batas {kmText(p.status.dueKm)}</>}
                     {p.status.dueOn && p.status.status !== "unknown" && <> · batas {dateText(p.status.dueOn)}</>}
                   </div>
