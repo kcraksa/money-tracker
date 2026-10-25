@@ -146,8 +146,8 @@ export function ShoppingChecklist({ listId, periodLabel, initialItems, stores, s
       />
 
       <section className="card flex flex-col gap-3" aria-label="Toko">
-        <div className="flex items-center gap-2 text-sm font-semibold">
-          <Store className="h-4 w-4 text-primary" aria-hidden /> Belanja di mana?
+        <div className="flex items-center gap-2 text-base font-semibold">
+          <Store className="h-[18px] w-[18px] text-primary" aria-hidden /> Belanja di mana?
         </div>
         <div className="flex flex-wrap gap-2" role="group" aria-label="Pilih toko">
           {stores.map((s) => (
@@ -403,7 +403,7 @@ function Row({
         <div className="overflow-hidden">
           <div className="flex flex-wrap items-center gap-2 pl-11 pt-3">
             <div className="flex items-center rounded-xl border border-control bg-surface" role="group" aria-label="Jumlah dibeli">
-              <button className="flex h-10 w-10 items-center justify-center text-muted" aria-label="Kurangi" onClick={() => { haptic("tap"); step(-1); }}>
+              <button className="flex h-11 w-11 items-center justify-center text-muted" aria-label="Kurangi" onClick={() => { haptic("tap"); step(-1); }}>
                 <Minus className="h-4 w-4" aria-hidden />
               </button>
               <input
@@ -412,15 +412,15 @@ function Row({
                 onKeyDown={(e) => e.key === "Enter" && e.currentTarget.blur()} onFocus={(e) => e.currentTarget.select()}
                 className="w-14 bg-transparent text-center text-base font-bold tabular-nums outline-none focus:text-primary"
               />
-              <button className="flex h-10 w-10 items-center justify-center text-primary" aria-label="Tambah" onClick={() => { haptic("tap"); step(1); }}>
+              <button className="flex h-11 w-11 items-center justify-center text-primary" aria-label="Tambah" onClick={() => { haptic("tap"); step(1); }}>
                 <Plus className="h-4 w-4" aria-hidden />
               </button>
             </div>
             <span className="text-muted" aria-hidden>×</span>
             <input
               inputMode="numeric" aria-label={`Harga per ${item.unit}`} placeholder={`Harga/${item.unit}`}
-              className="input min-h-10 w-28 px-3 text-right font-semibold tabular-nums" value={price}
-              onChange={(e) => setPrice(e.target.value.replace(/\D/g, ""))} onBlur={commitPrice}
+              className="input min-h-11 w-32 px-3 text-right font-semibold tabular-nums" value={price ? Number(price).toLocaleString("id-ID") : ""}
+              onChange={(e) => setPrice(e.target.value.replace(/\D/g, "").slice(0, 9))} onBlur={commitPrice}
             />
             <div className="basis-full text-right text-sm text-muted">
               Subtotal <span className="font-bold tabular-nums text-fg">{rupiah(total)}</span>

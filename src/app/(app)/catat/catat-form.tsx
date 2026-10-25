@@ -233,12 +233,7 @@ export function CatatForm({ categories, quicks, today, simple = false, logFn = l
         </section>
       )}
 
-      <section className="card flex flex-col gap-1 px-5 py-3" aria-label="Nominal">
-        <div className="flex items-center justify-between">
-          <span className="flex items-center gap-2 text-sm font-medium text-muted">
-            {selected ? <><span aria-hidden>{selected.icon}</span> {selected.name}</> : "Belum pilih kategori"}
-          </span>
-        </div>
+      <section className="card flex flex-col gap-2 p-4" aria-label="Nominal">
         <Segmented<"today" | "yesterday" | "other">
           label="Tanggal pengeluaran" value={when} onSelect={setWhen}
           items={[{ key: "today", label: "Hari ini" }, { key: "yesterday", label: "Kemarin" }, { key: "other", label: "Tanggal lain" }]}

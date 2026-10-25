@@ -199,8 +199,16 @@ button, a, nav, summary, [role="tab"], [role="checkbox"] {
 @utility pill {
   @apply inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold;
 }
+/* Skala huruf: judul halaman 24 · judul bagian 17 · isi/nama baris 16 · keterangan 14 · catatan kecil 13. */
 @utility section-title {
-  @apply mb-2.5 flex items-center justify-between text-[15px] font-semibold tracking-tight;
+  @apply mb-3 flex min-h-8 items-center justify-between gap-3 text-[17px] font-bold tracking-tight;
+}
+/* Tautan di ujung kanan judul bagian: satu gaya untuk semua ("Atur anggaran ›", "Lihat semua ›"). */
+@utility section-link {
+  @apply -my-1.5 -mr-2 inline-flex min-h-11 shrink-0 items-center gap-0.5 rounded-full px-2.5 text-sm font-semibold text-primary hover:bg-primary-soft;
+}
+@utility section-hint {
+  @apply -mt-1.5 mb-3 text-sm text-muted;
 }
 @utility skeleton {
   @apply animate-pulse rounded-xl bg-surface-2;

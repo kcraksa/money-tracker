@@ -33,44 +33,48 @@ export function RecentList({ rows, today, categories }: { rows: Row[]; today: st
       <h2 id="terakhir-h" className="section-title">Catatan terakhir</h2>
       <ul className="card divide-y divide-border p-0">
         {rows.map((r) => (
-          <li key={r.id} className="flex items-center gap-2 px-4 py-3">
-            <CategoryIcon icon={r.icon} size="sm" />
-            <div className="min-w-0 flex-1 pl-1">
-              <div className="font-semibold">{r.category}</div>
-              {r.note && <div className="text-sm text-fg">{r.note}</div>}
-              <div className="flex items-center gap-1.5 text-sm text-muted">
-                {r.who}{r.spentOn === today ? " · hari ini" : ` · ${r.spentOn.slice(8)}/${r.spentOn.slice(5, 7)}`}
+          <li key={r.id} className="flex flex-col gap-1 px-4 py-3">
+            <div className="flex items-center gap-3">
+              <CategoryIcon icon={r.icon} size="sm" />
+              <div className="min-w-0 flex-1">
+                <div className="text-base font-semibold">{r.category}</div>
+                {r.note && <div className="text-sm">{r.note}</div>}
               </div>
+              <div className="text-base font-bold tabular-nums">{rupiah(r.amount)}</div>
             </div>
-            <div className="font-bold tabular-nums">{rupiah(r.amount)}</div>
-            {r.editable && (
-              <button
-                aria-label={`Ubah catatan ${r.category} ${rupiah(r.amount)}`} onClick={() => setEditing(r)}
-                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-primary transition hover:bg-surface-2"
-              >
-                <Pencil className="h-[18px] w-[18px]" aria-hidden />
-              </button>
-            )}
-            {r.mine && (
-              deleting === r.id ? (
-                <span className="flex h-11 w-11 shrink-0 items-center justify-center" role="status" aria-label="Menghapus…"><Spinner /></span>
-              ) : (
-                <ConfirmButton
-                  aria-label={`Hapus catatan ${r.category} ${rupiah(r.amount)}`}
-                  title="Hapus catatan ini?"
-                  message={<>{r.category}{r.note ? ` (${r.note})` : ""} sebesar {rupiah(r.amount)} akan dihapus.</>}
-                  onConfirm={() => {
-                    setDeleting(r.id);
-                    start(async () => {
-                      try { await undoExpense(r.id); } finally { setDeleting(null); router.refresh(); }
-                    });
-                  }}
-                  className="-mr-2 flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-muted transition hover:bg-surface-2"
-                >
-                  <Trash2 className="h-4 w-4" aria-hidden />
-                </ConfirmButton>
-              )
-            )}
+            <div className="flex min-h-11 items-center justify-between gap-2 pl-12 text-sm text-muted">
+              <span>{r.who}{r.spentOn === today ? " · hari ini" : ` · ${Number(r.spentOn.slice(8))}/${Number(r.spentOn.slice(5, 7))}`}</span>
+              <span className="-mr-2 flex items-center">
+                {r.editable && (
+                  <button
+                    aria-label={`Ubah catatan ${r.category} ${rupiah(r.amount)}`} onClick={() => setEditing(r)}
+                    className="flex min-h-11 items-center gap-1 rounded-full px-3 font-semibold text-primary transition hover:bg-surface-2"
+                  >
+                    <Pencil className="h-4 w-4" aria-hidden /> Ubah
+                  </button>
+                )}
+                {r.mine && (
+                  deleting === r.id ? (
+                    <span className="flex min-h-11 w-20 items-center justify-center" role="status" aria-label="Menghapus…"><Spinner /></span>
+                  ) : (
+                    <ConfirmButton
+                      aria-label={`Hapus catatan ${r.category} ${rupiah(r.amount)}`}
+                      title="Hapus catatan ini?"
+                      message={<>{r.category}{r.note ? ` (${r.note})` : ""} sebesar {rupiah(r.amount)} akan dihapus.</>}
+                      onConfirm={() => {
+                        setDeleting(r.id);
+                        start(async () => {
+                          try { await undoExpense(r.id); } finally { setDeleting(null); router.refresh(); }
+                        });
+                      }}
+                      className="flex min-h-11 items-center gap-1 rounded-full px-3 font-semibold text-danger transition hover:bg-surface-2"
+                    >
+                      <Trash2 className="h-4 w-4" aria-hidden /> Hapus
+                    </ConfirmButton>
+                  )
+                )}
+              </span>
+            </div>
           </li>
         ))}
       </ul>

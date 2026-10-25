@@ -1,13 +1,13 @@
 import Link from "next/link";
-import { AlertTriangle, Check, ChevronRight, Flame, KeyIcon, LayoutGrid, Pencil, Plus, Settings, Sparkles, Wallet } from "@/components/icons";
+import { AlertTriangle, Check, ChevronRight, Flame, KeyIcon, Plus, Settings, Sparkles, Wallet } from "@/components/icons";
 import { CategoryIcon } from "@/components/category-icon";
+import { ModuleSwitch } from "@/components/module-switch";
 import { PageHeader } from "@/components/page-header";
 import { ProgressBar } from "@/components/progress-bar";
 import { Ring } from "@/components/ring";
 import type { Forecast } from "@/lib/forecast";
 import { rupiah } from "@/lib/format";
 import { levelInfo } from "@/lib/gamification";
-import { MENU_PICK } from "@/lib/last-module";
 import type { Category } from "@/lib/types";
 import { BillRow } from "./bill-row";
 import { setSimpleMode } from "@/app/actions/settings";
@@ -60,18 +60,13 @@ export function HomeView(p: HomeProps) {
         title={`Halo, ${p.name} 👋`}
         subtitle={p.greeting}
         actions={
-          <>
-            <Link href={MENU_PICK} transitionTypes={["nav-back"]}
-              className="flex min-h-11 items-center gap-1.5 rounded-full border border-border bg-surface px-3.5 text-sm font-semibold shadow-card">
-              <LayoutGrid className="h-4 w-4 text-primary" aria-hidden /> Servis kendaraan
-            </Link>
-            <Link href="/pengaturan" transitionTypes={["nav-forward"]} aria-label="Pengaturan"
-              className="flex h-11 w-11 items-center justify-center rounded-full border border-border bg-surface text-muted shadow-card">
-              <Settings className="h-5 w-5" aria-hidden />
-            </Link>
-          </>
+          <Link href="/pengaturan" transitionTypes={["nav-forward"]} aria-label="Pengaturan"
+            className="flex h-11 w-11 items-center justify-center rounded-full border border-border bg-surface text-muted shadow-card">
+            <Settings className="h-5 w-5" aria-hidden />
+          </Link>
         }
       />
+      <ModuleSwitch current="keuangan" />
 
       {!setupDone && <StartCard steps={steps} />}
 
@@ -79,18 +74,21 @@ export function HomeView(p: HomeProps) {
       {!fresh && (
       <section aria-labelledby="uang-h" className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-hero-from to-hero-to p-5 text-white shadow-float">
         <div className="pointer-events-none absolute -right-10 -top-10 h-44 w-44 rounded-full bg-white/10" aria-hidden />
-        <div className="relative flex items-baseline justify-between gap-2">
-          <h2 id="uang-h" className="text-sm font-semibold">Pengeluaran {p.periodLabel}</h2>
-          <span className="shrink-0 text-sm opacity-90">hari ke-{p.day} dari {p.totalDays}</span>
-        </div>
-        <div className="relative mt-2 text-[34px] font-extrabold leading-none tracking-tight tabular-nums">{rupiah(p.totalSpent)}</div>
-        {p.totalBudget > 0 ? (
+        <h2 id="uang-h" className="relative text-sm font-semibold">Pengeluaran periode ini</h2>
+        <div className="relative mt-1 text-[36px] font-extrabold leading-none tracking-tight tabular-nums">{rupiah(p.totalSpent)}</div>
+        <p className="relative mt-2 text-sm">{p.periodLabel} · hari ke-{p.day} dari {p.totalDays}</p>
+        {p.totalBudget > 0 && (
           <>
-            <p className="relative mt-2 text-[15px]">
-              {left >= 0
-                ? <>Sisa anggaran <b className="tabular-nums">{rupiah(left)}</b> dari {rupiah(p.totalBudget)}</>
-                : <>Lebih <b className="tabular-nums">{rupiah(-left)}</b> dari anggaran {rupiah(p.totalBudget)}</>}
-            </p>
+            <div className="relative mt-4 grid grid-cols-2 gap-3 border-t border-white/25 pt-3">
+              <div>
+                <div className="text-sm">{left >= 0 ? "Sisa anggaran" : "Lebih dari anggaran"}</div>
+                <div className="text-lg font-bold tabular-nums">{rupiah(Math.abs(left))}</div>
+              </div>
+              <div className="text-right">
+                <div className="text-sm">Anggaran</div>
+                <div className="text-lg font-bold tabular-nums">{rupiah(p.totalBudget)}</div>
+              </div>
+            </div>
             <div
               role="progressbar" aria-label="Anggaran terpakai" aria-valuenow={Math.round(Math.min(100, monthPct))} aria-valuemin={0} aria-valuemax={100}
               className="relative mt-3 h-2.5 overflow-hidden rounded-full bg-white/20"
@@ -98,15 +96,13 @@ export function HomeView(p: HomeProps) {
               <div className={`h-full rounded-full ${monthPct > 100 ? "bg-red-300" : "bg-white"}`} style={{ width: `${Math.min(100, monthPct)}%` }} />
             </div>
           </>
-        ) : (
-          <p className="relative mt-2 text-[15px]">terpakai periode ini</p>
         )}
         <Link href="/catat"
           className="relative mt-4 flex min-h-13 items-center justify-center gap-2 rounded-xl bg-white px-4 text-base font-bold text-hero-to transition active:scale-[0.98]">
           <Plus className="h-5 w-5" aria-hidden /> Catat pengeluaran
         </Link>
         {!p.simple && (
-          <p className="relative mt-2 flex items-center justify-center gap-1.5 text-sm">
+          <p className="relative mt-2.5 flex items-center justify-center gap-1.5 text-sm">
             {p.loggedToday
               ? <><Check className="h-4 w-4" aria-hidden /> Hari ini sudah dicatat</>
               : "Hari ini belum ada catatan"}
@@ -147,13 +143,13 @@ export function HomeView(p: HomeProps) {
       <section aria-labelledby="sisa-h">
         <h2 id="sisa-h" className="section-title">
           <span>Pengeluaran sehari-hari</span>
-          <Link href="/rencana" transitionTypes={["nav-forward"]} className="flex min-h-11 items-center gap-1 rounded-full bg-primary-soft px-3 text-sm font-semibold text-primary">
-            <Pencil className="h-3.5 w-3.5" aria-hidden /> Atur anggaran
+          <Link href="/rencana" transitionTypes={["nav-forward"]} className="section-link">
+            Atur anggaran <ChevronRight className="h-4 w-4" aria-hidden />
           </Link>
         </h2>
-        <p className="-mt-1 mb-2.5 text-sm text-muted">Jumlahnya berubah-ubah, mis. makan dan bensin. Batasnya bisa kamu ubah kapan saja.</p>
+        <p className="section-hint">Jumlahnya berubah-ubah, mis. makan dan bensin. Batasnya bisa kamu ubah kapan saja.</p>
         {noBudgets && (
-          <Link href="/rencana" transitionTypes={["nav-forward"]} className="card mb-2 flex items-center justify-between gap-3 text-sm">
+          <Link href="/rencana" transitionTypes={["nav-forward"]} className="card mb-3 flex items-center justify-between gap-3 text-sm">
             <span>Anggaran belum diatur. Atur dulu supaya sisa uang tiap kategori terlihat.</span>
             <span className="shrink-0 font-semibold text-primary">Atur</span>
           </Link>
@@ -163,21 +159,10 @@ export function HomeView(p: HomeProps) {
             <li key={c.id} className="flex flex-col gap-2.5 px-4 py-3.5">
               <div className="flex items-center gap-3">
                 <CategoryIcon icon={c.icon} />
-                <div className="min-w-0 flex-1">
-                  <div className="flex flex-wrap items-center gap-x-2">
-                    <span className="truncate font-semibold">{c.name}</span>
-                    {f.status === "over" && <span className="pill bg-danger-bg text-danger">Lewat anggaran</span>}
-                    {f.status === "warn" && <span className="pill bg-warn-bg text-warn">Hati-hati</span>}
-                  </div>
-                  <div className="text-xs text-muted tabular-nums">
-                    {f.budget > 0 ? `terpakai ${rupiah(f.spent)} dari ${rupiah(f.budget)}` : `terpakai ${rupiah(f.spent)}`}
-                  </div>
-                </div>
+                <div className="min-w-0 flex-1 text-base font-semibold">{c.name}</div>
                 {f.budget > 0 && (
-                  <div className="text-right">
-                    <div className={`text-[15px] font-bold tabular-nums ${f.remaining < 0 ? "text-danger" : ""}`}>
-                      {rupiah(Math.abs(f.remaining))}
-                    </div>
+                  <div className="text-right leading-tight">
+                    <div className={`text-base font-bold tabular-nums ${f.remaining < 0 ? "text-danger" : ""}`}>{rupiah(Math.abs(f.remaining))}</div>
                     <div className="text-xs text-muted">{f.remaining < 0 ? "kelebihan" : "sisa"}</div>
                   </div>
                 )}
@@ -185,6 +170,13 @@ export function HomeView(p: HomeProps) {
               {f.budget > 0 && (
                 <ProgressBar size="sm" label={`Terpakai ${c.name}`} pct={(f.spent / f.budget) * 100} tone={TONE[f.status]} />
               )}
+              <div className="flex items-center justify-between gap-3 text-sm text-muted">
+                <span className="tabular-nums">
+                  {f.budget > 0 ? `Terpakai ${rupiah(f.spent)} dari ${rupiah(f.budget)}` : `Terpakai ${rupiah(f.spent)}`}
+                </span>
+                {f.status === "over" && <span className="pill shrink-0 bg-danger-bg text-danger">Lewat anggaran</span>}
+                {f.status === "warn" && <span className="pill shrink-0 bg-warn-bg text-warn">Hati-hati</span>}
+              </div>
             </li>
           ))}
         </ul>
@@ -194,7 +186,7 @@ export function HomeView(p: HomeProps) {
         <section aria-labelledby="masuk-h">
           <h2 id="masuk-h" className="section-title">
             <span>Uang masuk periode ini</span>
-            <Link href="/rencana" transitionTypes={["nav-forward"]} className="flex min-h-11 items-center gap-0.5 text-sm font-semibold text-primary">
+            <Link href="/rencana" transitionTypes={["nav-forward"]} className="section-link">
               Ubah <ChevronRight className="h-4 w-4" aria-hidden />
             </Link>
           </h2>
@@ -212,7 +204,7 @@ export function HomeView(p: HomeProps) {
         <Link href="/rencana" transitionTypes={["nav-forward"]} className="card flex items-center gap-3 p-4 text-sm">
           <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary-soft text-primary"><Wallet className="h-5 w-5" aria-hidden /></span>
           <span className="flex-1">
-            <b className="block text-[15px]">{p.hasPeriod ? "Catat pemasukan periode ini" : "Catat gajian"}</b>
+            <b className="block text-base">{p.hasPeriod ? "Catat pemasukan periode ini" : "Catat gajian"}</b>
             <span className="text-muted">Lalu bagi uangnya ke tiap kategori pengeluaran.</span>
           </span>
           <ChevronRight className="h-5 w-5 shrink-0 text-muted" aria-hidden />
@@ -221,14 +213,13 @@ export function HomeView(p: HomeProps) {
 
       {p.bills.length > 0 && (
         <section aria-labelledby="tagihan-h">
-          <h2 id="tagihan-h" className="section-title">Tagihan bulanan</h2>
-          <p className="-mt-1 mb-2.5 text-sm text-muted">Jumlahnya tetap dan dibayar sekali sebulan, mis. listrik. Ketuk Bayar kalau sudah lunas.</p>
+          <h2 id="tagihan-h" className="section-title"><span>Tagihan bulanan</span></h2>
+          <p className="section-hint">Jumlahnya tetap dan dibayar sekali sebulan, mis. listrik. Ketuk Bayar kalau sudah lunas.</p>
           <ul className="card divide-y divide-border p-0">
             {p.bills.map((b) => <BillRow key={b.categoryId} {...b} simple={p.simple} />)}
           </ul>
         </section>
       )}
-
       </>)}
 
       {/* Poin keluarga: penyemangat, bukan informasi utama. Disembunyikan di mode sederhana. */}
@@ -236,7 +227,7 @@ export function HomeView(p: HomeProps) {
       <section aria-labelledby="poin-h">
         <h2 id="poin-h" className="section-title">
           <span>Poin keluarga</span>
-          <Link href="/pencapaian" transitionTypes={["nav-forward"]} className="flex min-h-11 items-center gap-0.5 text-sm font-semibold text-primary">
+          <Link href="/pencapaian" transitionTypes={["nav-forward"]} className="section-link">
             Lihat semua <ChevronRight className="h-4 w-4" aria-hidden />
           </Link>
         </h2>
@@ -246,7 +237,7 @@ export function HomeView(p: HomeProps) {
               <span className="text-xl font-extrabold leading-none text-primary">{lvl.level}</span>
             </Ring>
             <div className="min-w-0 flex-1">
-              <div className="font-semibold">Level {lvl.level} · {p.totalXp.toLocaleString("id-ID")} poin</div>
+              <div className="text-base font-semibold">Level {lvl.level} · {p.totalXp.toLocaleString("id-ID")} poin</div>
               <div className="text-sm text-muted">{lvl.span - lvl.into} poin lagi ke level {lvl.level + 1}</div>
               {p.streak > 0 && (
                 <div className="mt-1 flex items-center gap-1 text-sm font-medium text-warn">
@@ -257,11 +248,11 @@ export function HomeView(p: HomeProps) {
           </div>
           {p.quests.length > 0 && (
             <div className="border-t border-border pt-3">
-              <h3 className="mb-2 flex items-center justify-between text-sm font-semibold">
+              <h3 className="mb-3 flex items-center justify-between gap-2 text-sm font-semibold">
                 <span>Tantangan minggu ini</span>
                 <span className="flex items-center gap-1 text-warn"><Sparkles className="h-4 w-4" aria-hidden /> +50 poin tiap selesai</span>
               </h3>
-              <ul className="flex flex-col gap-3">
+              <ul className="flex flex-col gap-3.5">
                 {p.quests.map((q) => (
                   <li key={q.code} className="flex items-center gap-3">
                     <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${q.complete ? "bg-ok-bg text-ok" : "bg-primary-soft text-primary"}`}>
@@ -269,8 +260,8 @@ export function HomeView(p: HomeProps) {
                     </span>
                     <div className="min-w-0 flex-1">
                       <div className="flex items-baseline justify-between gap-2">
-                        <span className="truncate text-sm font-semibold">{q.title}</span>
-                        <span className={`shrink-0 text-xs font-semibold tabular-nums ${q.complete ? "text-ok" : "text-muted"}`}>
+                        <span className="text-sm font-semibold">{q.title}</span>
+                        <span className={`shrink-0 text-sm font-semibold tabular-nums ${q.complete ? "text-ok" : "text-muted"}`}>
                           {q.complete ? "Selesai" : `${q.done} dari ${q.target}`}
                         </span>
                       </div>
@@ -334,8 +325,8 @@ function MiniStat({ label, value, tone }: { label: string; value: string; tone?:
   const color = tone === "danger" ? "text-danger" : tone === "warn" ? "text-warn" : tone === "ok" ? "text-ok" : "";
   return (
     <div className="flex flex-col-reverse px-1 py-3">
-      <dd className={`text-sm font-bold tabular-nums ${color}`}>{value}</dd>
-      <dt className="text-xs font-medium text-muted">{label}</dt>
+      <dd className={`text-[15px] font-bold tabular-nums ${color}`}>{value}</dd>
+      <dt className="text-sm text-muted">{label}</dt>
     </div>
   );
 }

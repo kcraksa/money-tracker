@@ -1,9 +1,9 @@
 import Link from "next/link";
 import { EmptyState } from "@/components/empty-state";
-import { AlertTriangle, ChevronRight, Gauge, LayoutGrid, Plus, Wrench } from "@/components/icons";
+import { ChevronRight, Gauge, Plus, Wrench } from "@/components/icons";
+import { ModuleSwitch } from "@/components/module-switch";
 import { MigrationNotice } from "@/components/migration-notice";
 import { PageHeader } from "@/components/page-header";
-import { MENU_PICK } from "@/lib/last-module";
 import { dueText } from "@/lib/service/logic";
 import { KIND_ICON, STATUS_UI } from "@/lib/service/ui";
 import { VehicleCard } from "./vehicle-card";
@@ -30,6 +30,8 @@ export function ServisHome({ vehicles, outdated, error }: { vehicles: VehicleOve
         }
       />
 
+      <ModuleSwitch current="servis" />
+
       {outdated && <MigrationNotice file="0004_service_record.sql" />}
       {error && <p className="rounded-2xl bg-danger-bg p-3.5 text-sm text-danger"><b>Gagal memuat.</b> {error}</p>}
 
@@ -42,17 +44,18 @@ export function ServisHome({ vehicles, outdated, error }: { vehicles: VehicleOve
 
       {alerts.length > 0 && (
         <section aria-labelledby="perhatian-h">
-          <h2 id="perhatian-h" className="section-title"><span className="flex items-center gap-2"><AlertTriangle className="h-4 w-4 text-warn" aria-hidden /> Perlu perhatian</span></h2>
+          <h2 id="perhatian-h" className="section-title"><span>Perlu perhatian</span></h2>
           <ul className="card divide-y divide-border p-0">
             {alerts.map(({ o, p }) => {
               const ui = STATUS_UI[p.status.status];
               return (
                 <li key={p.id}>
-                  <Link href={`/servis/${o.vehicle.id}`} transitionTypes={["nav-forward"]} className="flex items-center gap-3 px-4 py-3">
-                    <span className="text-xl" aria-hidden>{KIND_ICON[o.vehicle.kind]}</span>
+                  <Link href={`/servis/${o.vehicle.id}`} transitionTypes={["nav-forward"]} className="flex min-h-16 items-center gap-3 px-4 py-3">
+                    <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-surface-2 text-xl" aria-hidden>{KIND_ICON[o.vehicle.kind]}</span>
                     <div className="min-w-0 flex-1">
-                      <div className="truncate font-semibold">{p.name}</div>
-                      <div className="text-xs text-muted">{o.vehicle.name} · {dueText(p.status)}</div>
+                      <div className="text-base font-semibold">{p.name}</div>
+                      <div className="text-sm text-muted">{o.vehicle.name}</div>
+                      <div className={`text-sm font-medium ${ui.text}`}>{dueText(p.status)}</div>
                     </div>
                     <span className={`pill shrink-0 ${ui.pill}`}>{ui.label}</span>
                     <ChevronRight className="h-4 w-4 shrink-0 text-muted" aria-hidden />
@@ -77,9 +80,6 @@ export function ServisHome({ vehicles, outdated, error }: { vehicles: VehicleOve
         </EmptyState>
       ) : null}
 
-      <Link href={MENU_PICK} transitionTypes={["nav-back"]} className="btn-soft self-center text-sm">
-        <LayoutGrid className="h-4 w-4" aria-hidden /> Pindah ke Keuangan Rumah
-      </Link>
     </div>
   );
 }
