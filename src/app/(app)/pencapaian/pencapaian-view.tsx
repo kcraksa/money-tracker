@@ -1,3 +1,5 @@
+import { setSimpleMode } from "@/app/actions/settings";
+import { SubmitButton } from "@/components/submit-button";
 import { Check, Crown, KeyIcon, Lock, PiggyBank, NotebookPen, Sparkles } from "@/components/icons";
 import { PageHeader } from "@/components/page-header";
 import { ProgressBar } from "@/components/progress-bar";
@@ -138,6 +140,12 @@ export function PencapaianView(p: PencapaianProps) {
           {p.history.length === 0 && <li className="px-4 py-3 text-sm text-muted">Belum ada poin. Catat pengeluaran untuk mulai mengumpulkan.</li>}
         </ul>
       </section>
+
+      <form action={setSimpleMode} className="card flex flex-col gap-2 p-4">
+        <input type="hidden" name="simple" value="1" />
+        <p className="text-sm text-muted">Poin dan tantangan hanya penyemangat. Kalau kamu hanya ingin mencatat uang, boleh disembunyikan (bisa dinyalakan lagi di Pengaturan).</p>
+        <SubmitButton pendingLabel="Menyembunyikan…" className="btn-soft">Sembunyikan poin &amp; tantangan</SubmitButton>
+      </form>
     </div>
   );
 }

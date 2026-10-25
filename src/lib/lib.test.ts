@@ -13,6 +13,7 @@ import { forecast } from "./forecast";
 import { BADGES, computeStreak, levelInfo, questProgress, savingPoints } from "./gamification";
 import { evaluate, isPlanned, matchesQuery, recommend, suggestMonthlyNeed } from "./shopping";
 import { qty, rupiah } from "./format";
+import { MAX_BUDGET, cleanAllocation } from "./budget-input";
 import { MAX_AMOUNT, cleanAmount, cleanSpentOn } from "./expense-input";
 import { parseModule } from "./last-module";
 import { isSimpleValue } from "./simple-mode";
@@ -499,5 +500,24 @@ describe("komponen servis tanpa interval", () => {
   });
   it("ringkasan kendaraan hanya dari komponen yang punya pengingat", () => {
     expect(summarize([]).worst).toBe("ok");
+  });
+});
+
+describe("pembagian anggaran", () => {
+  const cats = [
+    { id: "a", kind: "daily" }, { id: "b", kind: "daily" }, { id: "t", kind: "fixed" },
+  ];
+  it("hanya kategori yang dikenal; nominal dibulatkan dan dibatasi 0..batas", () => {
+    const r = cleanAllocation({ budgets: { a: 2_000_000.6, b: -5, x: 999, t: "450000" } }, cats);
+    expect(r.budgets).toEqual([{ id: "a", amount: 2_000_001 }, { id: "b", amount: 0 }, { id: "t", amount: 450000 }]);
+    expect(cleanAllocation({ budgets: { a: 1e15 } }, cats).budgets[0].amount).toBe(MAX_BUDGET);
+    expect(cleanAllocation({ budgets: { a: "abc" } }, cats).budgets).toEqual([]);
+  });
+  it("tanggal bayar: hanya tagihan, hanya 1..28, selain itu dikosongkan", () => {
+    const r = cleanAllocation({ dueDays: { t: 20, a: 5 } }, cats);
+    expect(r.dues).toEqual([{ id: "t", due: 20 }]); // kategori harian tidak punya tanggal bayar
+    expect(cleanAllocation({ dueDays: { t: 31 } }, cats).dues).toEqual([{ id: "t", due: null }]);
+    expect(cleanAllocation({ dueDays: { t: 0 } }, cats).dues).toEqual([{ id: "t", due: null }]);
+    expect(cleanAllocation({}, cats)).toEqual({ budgets: [], dues: [] });
   });
 });

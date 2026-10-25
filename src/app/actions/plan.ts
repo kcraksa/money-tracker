@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { getCtx } from "@/lib/ctx";
 import { addDays, todayISO } from "@/lib/date";
+import { cleanAllocation, type AllocationInput } from "@/lib/budget-input";
 import { loadPeriodContext } from "@/lib/server/period";
 
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
@@ -52,30 +53,33 @@ export async function deleteIncome(form: FormData) {
   done();
 }
 
-/** Simpan pembagian uang ke tiap pos untuk periode berjalan (berlaku sampai diubah lagi). */
-export async function saveAllocation(form: FormData) {
+/**
+ * Simpan pembagian uang ke tiap kategori untuk periode berjalan (berlaku sampai diubah lagi).
+ * Dipanggil dari klien dan TIDAK mengalihkan halaman, supaya posisi scroll tidak melompat ke atas.
+ */
+export async function saveAllocation(input: AllocationInput): Promise<{ ok: true } | { ok: false; error: string }> {
   const { supabase, householdId } = await getCtx();
   const { period } = await loadPeriodContext(supabase, todayISO());
   const { data: cats } = await supabase.from("category").select("id, kind").eq("active", true);
+  const { budgets, dues } = cleanAllocation(input ?? {}, (cats ?? []) as { id: string; kind: string }[]);
 
-  const rows = (cats ?? []).map((c) => ({
-    household_id: householdId, category_id: c.id as string,
-    amount: num(form.get(`budget_${c.id}`)), effective_from: period.start,
-  }));
-  if (rows.length) await supabase.from("budget").upsert(rows, { onConflict: "category_id,effective_from" });
-
-  for (const c of cats ?? []) {
-    if (c.kind !== "fixed") continue;
-    const due = num(form.get(`due_${c.id}`));
-    await supabase.from("category").update({ due_day: due >= 1 && due <= 28 ? due : null }).eq("id", c.id);
+  if (budgets.length) {
+    const { error } = await supabase.from("budget").upsert(
+      budgets.map((b) => ({ household_id: householdId, category_id: b.id, amount: b.amount, effective_from: period.start })),
+      { onConflict: "category_id,effective_from" },
+    );
+    if (error) return { ok: false, error: "Gagal menyimpan, coba lagi." };
   }
-  done();
+  await Promise.all(dues.map((d) => supabase.from("category").update({ due_day: d.due }).eq("id", d.id)));
+
+  revalidatePath("/", "layout");
+  return { ok: true };
 }
 
 export async function addCategory(form: FormData) {
   const { supabase, householdId } = await getCtx();
   const name = String(form.get("name") ?? "").trim().slice(0, 30);
-  if (!name) done("/rencana?err=nama");
+  if (!name) done("/rencana/kategori?err=nama");
 
   const { data: last } = await supabase.from("category").select("sort_order").order("sort_order", { ascending: false }).limit(1);
   const kind = form.get("kind") === "fixed" ? "fixed" : "daily";
@@ -85,22 +89,22 @@ export async function addCategory(form: FormData) {
     kind, lump_sum: kind === "daily" && form.get("lump_sum") === "on",
     sort_order: (last?.[0]?.sort_order ?? 0) + 1,
   });
-  done();
+  done("/rencana/kategori?tersimpan=1");
 }
 
 /** Ganti nama dan ikon kategori; catatan lamanya ikut tampil dengan nama baru karena merujuk ke kategori yang sama. */
 export async function renameCategory(form: FormData) {
   const { supabase } = await getCtx();
   const name = String(form.get("name") ?? "").trim().slice(0, 30);
-  if (!name) done("/rencana?err=nama");
+  if (!name) done("/rencana/kategori?err=nama");
   const icon = String(form.get("icon") ?? "").trim().slice(0, 4);
   await supabase.from("category").update({ name, ...(icon ? { icon } : {}) }).eq("id", String(form.get("id")));
-  done();
+  done("/rencana/kategori?tersimpan=1");
 }
 
 /** Pos diarsipkan (bukan dihapus) supaya riwayat pengeluarannya tetap utuh. */
 export async function archiveCategory(form: FormData) {
   const { supabase } = await getCtx();
   await supabase.from("category").update({ active: false }).eq("id", String(form.get("id")));
-  done();
+  done("/rencana/kategori?tersimpan=1");
 }
