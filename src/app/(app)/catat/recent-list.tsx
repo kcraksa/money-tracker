@@ -1,10 +1,11 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useTransition } from "react";
+import { useState, useTransition } from "react";
 import { undoExpense } from "@/app/actions/expense";
 import { CategoryIcon } from "@/components/category-icon";
-import { X } from "@/components/icons";
+import { ConfirmButton } from "@/components/confirm-button";
+import { Trash2 } from "@/components/icons";
 import { Spinner } from "@/components/spinner";
 import { rupiah } from "@/lib/format";
 
@@ -14,7 +15,8 @@ type Row = {
 
 export function RecentList({ rows, today }: { rows: Row[]; today: string }) {
   const router = useRouter();
-  const [pending, start] = useTransition();
+  const [, start] = useTransition();
+  const [deleting, setDeleting] = useState<string | null>(null);
   if (rows.length === 0) return null;
 
   return (
@@ -26,7 +28,7 @@ export function RecentList({ rows, today }: { rows: Row[]; today: string }) {
             <CategoryIcon icon={r.icon} size="sm" />
             <div className="min-w-0 flex-1">
               <div className="truncate font-semibold">{r.category}</div>
-              {r.note && <div className="truncate text-xs text-fg/80">{r.note}</div>}
+              {r.note && <div className="truncate text-sm text-fg">{r.note}</div>}
               <div className="flex items-center gap-1.5 text-xs text-muted">
                 <span className="flex h-4 w-4 items-center justify-center rounded-full bg-surface-2 text-[9px] font-bold uppercase" aria-hidden>
                   {r.who.slice(0, 1)}
@@ -36,14 +38,24 @@ export function RecentList({ rows, today }: { rows: Row[]; today: string }) {
             </div>
             <div className="font-bold tabular-nums">{rupiah(r.amount)}</div>
             {r.mine && (
-              <button
-                aria-label={`Hapus catatan ${r.category}`}
-                disabled={pending}
-                onClick={() => start(async () => { await undoExpense(r.id); router.refresh(); })}
-                className="-mr-2 flex h-10 w-10 items-center justify-center rounded-full text-muted transition hover:bg-surface-2"
-              >
-                {pending ? <Spinner /> : <X className="h-4 w-4" aria-hidden />}
-              </button>
+              deleting === r.id ? (
+                <span className="-mr-2 flex h-11 w-11 items-center justify-center" role="status" aria-label="Menghapus…"><Spinner /></span>
+              ) : (
+                <ConfirmButton
+                  aria-label={`Hapus catatan ${r.category} ${rupiah(r.amount)}`}
+                  title="Hapus catatan ini?"
+                  message={<>{r.category}{r.note ? ` (${r.note})` : ""} sebesar {rupiah(r.amount)} akan dihapus.</>}
+                  onConfirm={() => {
+                    setDeleting(r.id);
+                    start(async () => {
+                      try { await undoExpense(r.id); } finally { setDeleting(null); router.refresh(); }
+                    });
+                  }}
+                  className="-mr-2 flex h-11 w-11 items-center justify-center rounded-full text-muted transition hover:bg-surface-2"
+                >
+                  <Trash2 className="h-4 w-4" aria-hidden />
+                </ConfirmButton>
+              )
             )}
           </li>
         ))}

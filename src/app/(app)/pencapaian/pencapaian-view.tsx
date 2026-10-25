@@ -22,7 +22,7 @@ export function PencapaianView(p: PencapaianProps) {
 
   return (
     <div className="flex flex-col gap-5">
-      <PageHeader title="Pencapaian" subtitle="Level, badge, dan kontribusi berdua" />
+      <PageHeader title="Prestasi" subtitle="Poin, lencana, dan siapa paling rajin & hemat" />
 
       <section
         aria-label="Level keluarga"
@@ -30,17 +30,17 @@ export function PencapaianView(p: PencapaianProps) {
       >
         <div className="pointer-events-none absolute -right-10 -top-10 h-40 w-40 rounded-full bg-white/10" aria-hidden />
         <Ring pct={lvl.pct} size={88}>
-          <span className="text-[10px] font-semibold uppercase tracking-wider opacity-80">Level</span>
+          <span className="text-xs font-semibold uppercase tracking-wider opacity-90">Level</span>
           <span className="text-3xl font-extrabold leading-none">{lvl.level}</span>
         </Ring>
         <div className="relative">
-          <div className="text-2xl font-bold tracking-tight">{p.totalXp.toLocaleString("id-ID")} XP</div>
-          <div className="text-sm opacity-80">bersama · {lvl.span - lvl.into} XP lagi ke level {lvl.level + 1}</div>
+          <div className="text-2xl font-bold tracking-tight">{p.totalXp.toLocaleString("id-ID")} poin</div>
+          <div className="text-sm opacity-90">dikumpulkan bersama · {lvl.span - lvl.into} poin lagi ke level {lvl.level + 1}</div>
         </div>
       </section>
 
-      <section aria-label="Papan kontribusi">
-        <h2 className="section-title">Kontribusi {p.monthLabel}</h2>
+      <section aria-labelledby="kontribusi-h">
+        <h2 id="kontribusi-h" className="section-title">Poin {p.monthLabel}</h2>
         <div className="card flex flex-col gap-5">
           {p.board.map((b) => (
             <div key={b.id} className="flex flex-col gap-2.5">
@@ -50,8 +50,8 @@ export function PencapaianView(p: PencapaianProps) {
                 </span>
                 <span className="font-semibold">{b.name}</span>
               </div>
-              <Bar icon={<NotebookPen className="h-3.5 w-3.5" aria-hidden />} label="Rajin" value={b.rajin} max={maxPts} tone="primary" />
-              <Bar icon={<PiggyBank className="h-3.5 w-3.5" aria-hidden />} label="Hemat" value={b.hemat} max={maxPts} tone="ok" />
+              <Bar icon={<NotebookPen className="h-3.5 w-3.5" aria-hidden />} label="Rajin" value={b.rajin} max={maxPts} tone="primary" who={b.name} />
+              <Bar icon={<PiggyBank className="h-3.5 w-3.5" aria-hidden />} label="Hemat" value={b.hemat} max={maxPts} tone="ok" who={b.name} />
             </div>
           ))}
           <p className="rounded-xl bg-surface-2 p-3 text-sm text-muted">
@@ -65,12 +65,12 @@ export function PencapaianView(p: PencapaianProps) {
               </>
             )}
           </p>
-          <p className="-mt-2 text-xs text-muted">Poin hemat bobotnya lebih besar daripada poin catat.</p>
+          <p className="-mt-2 text-sm text-muted">Rajin = poin dari mencatat. Hemat = poin dari belanja lebih murah dari perkiraan; nilainya lebih besar.</p>
         </div>
       </section>
 
-      <section aria-label="Badge">
-        <h2 className="section-title">Badge</h2>
+      <section aria-labelledby="lencana-h">
+        <h2 id="lencana-h" className="section-title">Lencana</h2>
         <ul className="flex flex-col gap-2.5">
           {p.badges.map((b) => {
             const got = b.times > 0;
@@ -83,7 +83,8 @@ export function PencapaianView(p: PencapaianProps) {
                 </span>
                 <div className="min-w-0 flex-1">
                   <div className={`font-semibold ${got ? "" : "text-muted"}`}>{b.title}</div>
-                  <div className="text-xs text-muted">{b.desc}</div>
+                  <div className="text-sm text-muted">{b.desc}</div>
+                  {!got && <div className="sr-only">Belum diraih</div>}
                   {got && (
                     <div className="mt-1.5 text-xs font-semibold text-ok">
                       Diraih {b.times}× · terakhir {b.last}{b.by ? ` oleh ${b.by}` : ""}
@@ -96,10 +97,10 @@ export function PencapaianView(p: PencapaianProps) {
         </ul>
       </section>
 
-      <section aria-label="Quest minggu ini">
-        <h2 className="section-title">
-          <span>Quest minggu ini</span>
-          <span className="pill bg-accent-soft text-warn"><Sparkles className="h-3.5 w-3.5" aria-hidden /> +50 XP</span>
+      <section aria-labelledby="tantangan-h">
+        <h2 id="tantangan-h" className="section-title">
+          <span>Tantangan minggu ini</span>
+          <span className="pill bg-accent-soft text-warn"><Sparkles className="h-3.5 w-3.5" aria-hidden /> +50 poin</span>
         </h2>
         <ul className="card divide-y divide-border p-0">
           {p.quests.map((q) => (
@@ -111,10 +112,10 @@ export function PencapaianView(p: PencapaianProps) {
                 <div className="flex items-baseline justify-between gap-2">
                   <span className="truncate font-semibold">{q.title}</span>
                   <span className={`shrink-0 text-xs font-semibold tabular-nums ${q.complete ? "text-ok" : "text-muted"}`}>
-                    {q.complete ? "Selesai" : `${q.done}/${q.target}`}
+                    {q.complete ? "Selesai" : `${q.done} dari ${q.target}`}
                   </span>
                 </div>
-                <p className="text-xs text-muted">{q.desc}</p>
+                <p className="text-sm text-muted">{q.desc}</p>
                 <div className="mt-2"><ProgressBar size="sm" pct={(q.done / q.target) * 100} tone={q.complete ? "ok" : "primary"} label={q.title} /></div>
               </div>
             </li>
@@ -122,8 +123,8 @@ export function PencapaianView(p: PencapaianProps) {
         </ul>
       </section>
 
-      <section aria-label="Riwayat XP">
-        <h2 className="section-title">XP terbaru</h2>
+      <section aria-labelledby="riwayat-poin-h">
+        <h2 id="riwayat-poin-h" className="section-title">Poin terbaru</h2>
         <ul className="card divide-y divide-border p-0">
           {p.history.map((e) => (
             <li key={e.id} className="flex items-center justify-between gap-3 px-4 py-3 text-sm">
@@ -131,10 +132,10 @@ export function PencapaianView(p: PencapaianProps) {
                 <span className="font-medium">{e.note}</span>
                 <span className="text-muted"> · {e.who}</span>
               </span>
-              <span className="pill shrink-0 bg-primary-soft text-primary">+{e.points}</span>
+              <span className="pill shrink-0 bg-primary-soft text-primary">+{e.points} poin</span>
             </li>
           ))}
-          {p.history.length === 0 && <li className="px-4 py-3 text-sm text-muted">Belum ada XP.</li>}
+          {p.history.length === 0 && <li className="px-4 py-3 text-sm text-muted">Belum ada poin. Catat pengeluaran untuk mulai mengumpulkan.</li>}
         </ul>
       </section>
     </div>
@@ -142,12 +143,12 @@ export function PencapaianView(p: PencapaianProps) {
 }
 
 function Bar({
-  icon, label, value, max, tone,
-}: { icon: React.ReactNode; label: string; value: number; max: number; tone: "primary" | "ok" }) {
+  icon, label, value, max, tone, who,
+}: { icon: React.ReactNode; label: string; value: number; max: number; tone: "primary" | "ok"; who: string }) {
   return (
     <div className="flex items-center gap-2.5">
-      <span className="flex w-16 shrink-0 items-center gap-1.5 text-xs text-muted">{icon}{label}</span>
-      <div className="flex-1"><ProgressBar pct={(value / max) * 100} tone={tone} label={label} size="sm" /></div>
+      <span className="flex w-16 shrink-0 items-center gap-1.5 text-sm text-muted">{icon}{label}</span>
+      <div className="flex-1"><ProgressBar pct={(value / max) * 100} tone={tone} label={`Poin ${label.toLowerCase()} ${who}`} size="sm" /></div>
       <span className="w-9 text-right text-sm font-bold tabular-nums">{value}</span>
     </div>
   );

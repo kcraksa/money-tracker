@@ -6,7 +6,7 @@ import { evaluate, lineTotal } from "@/lib/shopping";
 import type { ListItem } from "@/lib/types";
 import { EvaluasiView } from "./evaluasi-view";
 
-export const metadata = { title: "Evaluasi belanja" };
+export const metadata = { title: "Laporan belanja" };
 
 export default async function EvaluasiPage({ searchParams }: { searchParams: Promise<{ bulan?: string }> }) {
   const sp = await searchParams;

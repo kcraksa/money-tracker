@@ -262,9 +262,9 @@ describe("gamifikasi", () => {
     expect(questProgress("berdua_kompak", ctx)).toEqual({ done: 1, target: 2 });
     expect(questProgress("stok_rapi", ctx)).toEqual({ done: 10, target: 10 });
   });
-  it("3 badge sesuai spesifikasi", () => {
+  it("3 lencana sesuai spesifikasi (nama dalam bahasa sehari-hari)", () => {
     expect(BADGES.map((b) => b.title)).toEqual([
-      "Belanja Sesuai Rekomendasi", "Budget Aman", "Listrik Lunas Tepat Waktu",
+      "Belanja Sesuai Daftar", "Anggaran Aman", "Listrik Lunas Tepat Waktu",
     ]);
   });
 });

@@ -38,8 +38,8 @@ export function computeStreak(dates: string[], today: string): number {
 }
 
 export const BADGES = [
-  { code: "belanja_sesuai", icon: "cart", title: "Belanja Sesuai Rekomendasi", desc: "Semua barang terbeli sesuai daftar, total tidak melebihi estimasi." },
-  { code: "budget_aman", icon: "shield", title: "Budget Aman", desc: "Semua kategori harian berakhir di bawah budget bulan itu." },
+  { code: "belanja_sesuai", icon: "cart", title: "Belanja Sesuai Daftar", desc: "Semua barang di daftar terbeli dan totalnya tidak lebih dari perkiraan." },
+  { code: "budget_aman", icon: "shield", title: "Anggaran Aman", desc: "Semua pengeluaran harian tidak melebihi anggarannya sampai akhir periode." },
   { code: "listrik_tepat", icon: "bolt", title: "Listrik Lunas Tepat Waktu", desc: "Tagihan listrik dibayar sebelum jatuh tempo." },
 ] as const;
 export type BadgeCode = (typeof BADGES)[number]["code"];

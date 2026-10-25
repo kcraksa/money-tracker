@@ -44,7 +44,7 @@ export default async function RiwayatPage({ searchParams }: { searchParams: Prom
         <HistoryList visits={history.visits} names={names} />
       ) : !overview.outdated && !history.error ? (
         <EmptyState icon={<History className="h-8 w-8" />} title="Belum ada riwayat">
-          <p className="max-w-xs text-sm text-muted">Servis yang kamu catat muncul di sini, lengkap dengan part, km, dan biayanya.</p>
+          <p className="max-w-xs text-sm text-muted">Servis yang kamu catat muncul di sini, lengkap dengan komponen, km, dan biayanya.</p>
           <Link href={v ? `/servis/catat?v=${v}` : "/servis/catat"} transitionTypes={["nav-forward"]} className="btn-primary mt-1"><Plus className="h-[18px] w-[18px]" aria-hidden /> Catat servis</Link>
         </EmptyState>
       ) : null}

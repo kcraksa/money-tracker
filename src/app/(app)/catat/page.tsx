@@ -5,7 +5,7 @@ import type { Category } from "@/lib/types";
 import { CatatForm } from "./catat-form";
 import { RecentList } from "./recent-list";
 
-export const metadata = { title: "Catat" };
+export const metadata = { title: "Catat pengeluaran" };
 
 export default async function CatatPage() {
   const { supabase, members, me } = await getCtx();

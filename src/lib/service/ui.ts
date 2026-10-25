@@ -2,7 +2,7 @@ import type { Status } from "./logic";
 
 /** Warna per status, dipakai bersama oleh kartu, daftar part, dan lencana. */
 export const STATUS_UI: Record<Status, { label: string; pill: string; bar: "ok" | "warn" | "danger" | "primary"; text: string }> = {
-  overdue: { label: "Terlewat", pill: "bg-danger-bg text-danger", bar: "danger", text: "text-danger" },
+  overdue: { label: "Lewat jadwal", pill: "bg-danger-bg text-danger", bar: "danger", text: "text-danger" },
   soon: { label: "Sebentar lagi", pill: "bg-warn-bg text-warn", bar: "warn", text: "text-warn" },
   ok: { label: "Aman", pill: "bg-ok-bg text-ok", bar: "ok", text: "text-ok" },
   unknown: { label: "Belum ada data", pill: "bg-surface-2 text-muted", bar: "primary", text: "text-muted" },

@@ -28,11 +28,11 @@ export function AllocationForm({ categories, incomeTotal }: { categories: AllocC
   ].filter((g) => g.items.length > 0);
 
   return (
-    <form action={saveAllocation} className="flex flex-col gap-4" aria-label="Alokasi anggaran">
+    <form action={saveAllocation} className="flex flex-col gap-4" aria-label="Pembagian anggaran">
       <div className="sticky top-2 z-10 rounded-2xl border border-border bg-surface/95 p-4 shadow-float backdrop-blur" role="status" aria-live="polite">
         <div className="flex items-baseline justify-between gap-2">
           <span className="text-sm font-medium text-muted">
-            {incomeTotal > 0 ? (left < 0 ? "Melebihi pemasukan" : left === 0 ? "Semua sudah dibagi" : "Belum dialokasikan") : "Total dialokasikan"}
+            {incomeTotal > 0 ? (left < 0 ? "Melebihi pemasukan" : left === 0 ? "Semua sudah dibagi" : "Belum dibagi") : "Total sudah dibagi"}
           </span>
           <span className={`text-xl font-extrabold tracking-tight tabular-nums ${incomeTotal > 0 ? tone : ""}`}>
             {rupiah(incomeTotal > 0 ? Math.abs(left) : allocated)}
@@ -47,7 +47,7 @@ export function AllocationForm({ categories, incomeTotal }: { categories: AllocC
               />
             </div>
             <div className="mt-1.5 flex justify-between text-xs text-muted tabular-nums">
-              <span>{rupiah(allocated)} dialokasikan</span>
+              <span>{rupiah(allocated)} sudah dibagi</span>
               <span>dari {rupiah(incomeTotal)}</span>
             </div>
           </>
@@ -65,17 +65,20 @@ export function AllocationForm({ categories, incomeTotal }: { categories: AllocC
                   {c.name}
                   {c.lump_sum && <span className="ml-1.5 text-xs font-normal text-muted">sekali jalan</span>}
                 </label>
-                <div className="flex gap-2">
+                <div className="flex items-end gap-2">
                   <input
                     id={`a_${c.id}`} name={`budget_${c.id}`} inputMode="numeric" placeholder="Rp 0" className="input min-h-11 font-semibold tabular-nums"
                     value={amounts[c.id] ? Number(amounts[c.id]).toLocaleString("id-ID") : ""}
                     onChange={(e) => setAmounts((a) => ({ ...a, [c.id]: digits(e.target.value) }))}
                   />
                   {c.kind === "fixed" && (
-                    <input
-                      name={`due_${c.id}`} inputMode="numeric" className="input min-h-11 w-20 text-center" placeholder="Tgl"
-                      aria-label={`Tanggal jatuh tempo ${c.name}`} defaultValue={c.due_day ?? ""}
-                    />
+                    <label className="flex w-24 shrink-0 flex-col">
+                      <span className="mb-1 text-xs font-medium text-muted">Bayar tgl</span>
+                      <input
+                        name={`due_${c.id}`} inputMode="numeric" className="input min-h-11 text-center" placeholder="1–28"
+                        aria-label={`Tanggal bayar ${c.name} tiap bulan`} defaultValue={c.due_day ?? ""}
+                      />
+                    </label>
                   )}
                 </div>
               </div>
@@ -84,9 +87,9 @@ export function AllocationForm({ categories, incomeTotal }: { categories: AllocC
         </section>
       ))}
       <p className="-mt-2 text-xs text-muted">
-        Kolom &quot;Tgl&quot; = tanggal jatuh tempo tiap bulan (1–28). Alokasi ini berlaku sampai kamu mengubahnya di periode berikutnya.
+        &quot;Bayar tgl&quot; = tanggal tagihan harus dibayar tiap bulan (1–28). Pembagian ini tetap dipakai sampai kamu mengubahnya.
       </p>
-      <SubmitButton pendingLabel="Menyimpan…" className="btn-primary">Simpan alokasi</SubmitButton>
+      <SubmitButton pendingLabel="Menyimpan…" className="btn-primary">Simpan pembagian</SubmitButton>
     </form>
   );
 }

@@ -6,7 +6,7 @@ const SQL = "alter table public.item add column if not exists stock_checked_at t
 export function DataNotice({ outdated, error }: { outdated?: boolean; error?: string | null }) {
   if (!outdated && !error) return null;
   return (
-    <div role="alert" className={`flex items-start gap-3 rounded-2xl p-3.5 text-sm ${error ? "bg-danger-bg text-danger" : "bg-warn-bg text-warn"}`}>
+    <div className={`flex items-start gap-3 rounded-2xl p-3.5 text-sm ${error ? "bg-danger-bg text-danger" : "bg-warn-bg text-warn"}`}>
       <AlertTriangle className="mt-0.5 h-[18px] w-[18px] shrink-0" aria-hidden />
       <div className="min-w-0">
         {error ? (

@@ -64,7 +64,7 @@ export async function logExpense(input: {
       if (spentOn === today && streak > 0 && streak % 7 === 0) {
         await award(supabase, {
           householdId, memberId: me.id, kind: "streak", points: XP.streakWeek,
-          ref: `streak:${today}`, note: `Streak ${streak} hari`,
+          ref: `streak:${today}`, note: `Mencatat ${streak} hari berturut-turut`,
         });
       }
       await afterActivity(supabase, householdId, today);

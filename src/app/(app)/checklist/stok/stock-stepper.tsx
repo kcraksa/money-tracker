@@ -7,7 +7,7 @@ import { Spinner } from "@/components/spinner";
 import { qty } from "@/lib/format";
 import { haptic } from "@/lib/haptics";
 
-export function StockStepper({ itemId, initial, unit }: { itemId: string; initial: number; unit: string }) {
+export function StockStepper({ itemId, name, initial, unit }: { itemId: string; name: string; initial: number; unit: string }) {
   const [stock, setStock] = useState(initial);
   const [inflight, setInflight] = useState(0);
   // Pasangan mengubah stok: ikuti nilai server yang baru.
@@ -36,16 +36,16 @@ export function StockStepper({ itemId, initial, unit }: { itemId: string; initia
   }
 
   return (
-    <div className="flex shrink-0 items-center rounded-2xl bg-surface-2 p-1" role="group" aria-label="Stok">
-      <button onClick={() => step(-1)} aria-label="Kurangi stok" disabled={stock <= 0}
+    <div className="flex shrink-0 items-center rounded-2xl bg-surface-2 p-1" role="group" aria-label={`Stok ${name}`}>
+      <button onClick={() => step(-1)} aria-label={`Kurangi stok ${name}`} disabled={stock <= 0}
         className="flex h-11 w-11 items-center justify-center rounded-xl bg-surface text-fg shadow-card transition active:scale-95 disabled:opacity-40">
         <Minus className="h-5 w-5" aria-hidden />
       </button>
-      <div className="w-14 text-center leading-tight">
+      <div className="w-14 text-center leading-tight" aria-live="polite" aria-atomic="true">
         <div key={stock} className="animate-tick text-lg font-bold tabular-nums">{qty(stock)}</div>
-        <div className="flex h-3 items-center justify-center text-[10px] text-muted">{inflight > 0 ? <Spinner className="h-2.5 w-2.5" /> : unit}</div>
+        <div className="flex h-4 items-center justify-center text-xs text-muted">{inflight > 0 ? <Spinner className="h-2.5 w-2.5" /> : unit}</div>
       </div>
-      <button onClick={() => step(1)} aria-label="Tambah stok"
+      <button onClick={() => step(1)} aria-label={`Tambah stok ${name}`}
         className="flex h-11 w-11 items-center justify-center rounded-xl bg-primary text-primary-fg shadow-card transition active:scale-95">
         <Plus className="h-5 w-5" aria-hidden />
       </button>

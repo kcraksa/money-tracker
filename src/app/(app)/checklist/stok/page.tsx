@@ -52,7 +52,7 @@ export default async function StokPage() {
           </span>
           <span className="min-w-0 flex-1">
             <span className="block font-semibold">Cek stok sebelum belanja</span>
-            <span className="block text-xs text-muted">Hitung barang di rumah, checklist otomatis menyesuaikan</span>
+            <span className="block text-xs text-muted">Hitung barang di rumah, daftar belanja otomatis menyesuaikan</span>
           </span>
           <ChevronRight className="h-5 w-5 text-muted" aria-hidden />
         </Link>
@@ -80,7 +80,7 @@ export default async function StokPage() {
                     butuh {qty(i.monthly_need)} {i.unit}/periode{i.last_price ? ` · ${rupiah(i.last_price)}/${i.unit}` : ""} · {agoLabel(i.stock_checked_at, today)}
                   </div>
                 </div>
-                <StockStepper itemId={i.id} initial={i.stock} unit={i.unit} />
+                <StockStepper itemId={i.id} name={i.name} initial={i.stock} unit={i.unit} />
               </div>
 
               <div><span className={`pill ${rec > 0 ? "bg-warn-bg text-warn" : "bg-ok-bg text-ok"}`}>

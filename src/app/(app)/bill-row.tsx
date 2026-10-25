@@ -72,7 +72,7 @@ export function BillRow({ categoryId, name, icon, amount, dueLabel, paid }: Prop
               value={value ? Number(value).toLocaleString("id-ID") : ""}
               onChange={(e) => setValue(e.target.value.replace(/\D/g, ""))}
             />
-            {dueLabel && <p className="mt-1.5 text-xs text-muted">Jatuh tempo {dueLabel}. Lunas sebelum itu dapat XP tepat waktu.</p>}
+            {dueLabel && <p className="mt-1.5 text-xs text-muted">Jatuh tempo {dueLabel}. Bayar sebelum tanggal itu untuk dapat poin tambahan.</p>}
           </div>
           {error && <p role="alert" className="rounded-2xl bg-danger-bg p-3 text-sm text-danger">{error}</p>}
           <button className="btn-primary min-h-14 text-base" disabled={pending || !value}>

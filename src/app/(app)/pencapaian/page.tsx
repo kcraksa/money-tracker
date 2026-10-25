@@ -7,7 +7,7 @@ import { loadQuestContext } from "@/lib/server/xp";
 import type { XpEvent } from "@/lib/types";
 import { PencapaianView } from "./pencapaian-view";
 
-export const metadata = { title: "Pencapaian" };
+export const metadata = { title: "Prestasi" };
 
 const DILIGENT: XpEvent["kind"][] = ["log", "streak", "bill"];
 const FRUGAL: XpEvent["kind"][] = ["saving", "bonus"];

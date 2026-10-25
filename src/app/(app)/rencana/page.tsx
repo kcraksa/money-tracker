@@ -1,5 +1,7 @@
 import { addCategory, addIncome, archiveCategory, deleteIncome } from "@/app/actions/plan";
 import { CategoryIcon } from "@/components/category-icon";
+import { ConfirmButton } from "@/components/confirm-button";
+import { Field } from "@/components/field";
 import { AlertTriangle, Check, Plus, Trash2 } from "@/components/icons";
 import { PageHeader } from "@/components/page-header";
 import { getCtx } from "@/lib/ctx";
@@ -14,7 +16,7 @@ export const metadata = { title: "Rencana gajian" };
 
 const ERRORS: Record<string, string> = {
   nominal: "Isi nominal pemasukan.",
-  periode: "Periode gagal dibuat, coba lagi.",
+  periode: "Gagal menyimpan gajian baru, coba lagi.",
   nama: "Isi nama pos anggaran.",
 };
 
@@ -56,7 +58,7 @@ export default async function RencanaPage({
       {overdue && (
         <p className="flex items-start gap-3 rounded-2xl bg-warn-bg p-3.5 text-sm text-warn">
           <AlertTriangle className="mt-0.5 h-[18px] w-[18px] shrink-0" aria-hidden />
-          Periode ini sudah melewati sebulan. Catat gajian baru di bawah untuk memulai periode berikutnya.
+          Sudah lebih dari sebulan sejak gajian terakhir. Catat gajian baru di bawah supaya hitungan anggaran dimulai lagi.
         </p>
       )}
 
@@ -77,26 +79,33 @@ export default async function RencanaPage({
                 <span className="font-semibold tabular-nums">{rupiah(Number(r.amount))}</span>
                 <form action={deleteIncome}>
                   <input type="hidden" name="id" value={r.id} />
-                  <SubmitButton iconOnly aria-label={`Hapus ${r.label}`} className="flex h-10 w-10 items-center justify-center rounded-full text-muted hover:bg-surface-2">
+                  <ConfirmButton
+                    aria-label={`Hapus ${r.label}`} title={`Hapus pemasukan ${r.label}?`}
+                    message={<>Pemasukan {r.label} sebesar {rupiah(Number(r.amount))} akan dihapus dari periode ini.</>}
+                    className="flex h-11 w-11 items-center justify-center rounded-full text-muted hover:bg-surface-2"
+                  >
                     <Trash2 className="h-4 w-4" aria-hidden />
-                  </SubmitButton>
+                  </ConfirmButton>
                 </form>
               </li>
             ))}
           </ul>
         )}
 
-        <form action={addIncome} className="grid grid-cols-2 gap-2">
-          <input name="amount" required inputMode="numeric" className="input" placeholder="Nominal, mis. 10000000" aria-label="Nominal pemasukan" />
-          <input name="label" className="input" placeholder="Keterangan (Gaji)" aria-label="Keterangan" maxLength={40} />
-          <div className="col-span-2">
-            <label className="label" htmlFor="received_on">Tanggal diterima</label>
-            <input id="received_on" name="received_on" type="date" defaultValue={today} max={today} className="input" />
-          </div>
+        <form action={addIncome} className="grid grid-cols-2 gap-3">
+          <Field label="Jumlah uang (Rp)">
+            <input name="amount" required inputMode="numeric" className="input" placeholder="mis. 10000000" />
+          </Field>
+          <Field label="Dari mana" optional>
+            <input name="label" className="input" placeholder="Gaji" maxLength={40} />
+          </Field>
+          <Field label="Tanggal diterima" className="col-span-2">
+            <input name="received_on" type="date" defaultValue={today} max={today} className="input" />
+          </Field>
           {period.explicit && (
             <label className="col-span-2 flex min-h-11 items-center gap-3 rounded-xl bg-surface-2 px-3.5 text-sm">
               <input type="checkbox" name="new_period" value="1" className="h-5 w-5 accent-[var(--primary)]" />
-              <span><b>Gajian baru</b> · mulai periode baru di tanggal ini</span>
+              <span><b>Ini gajian baru</b> · hitungan bulan anggaran dimulai lagi dari tanggal ini</span>
             </label>
           )}
           <SubmitButton pendingLabel="Menyimpan…" className="btn-primary col-span-2">
@@ -105,20 +114,20 @@ export default async function RencanaPage({
         </form>
         {!period.explicit && (
           <p className="text-xs text-muted">
-            Periode anggaran dimulai dari tanggal gajian dan berjalan sampai gajian berikutnya. Sebelum ada gajian tercatat, aplikasi memakai bulan kalender.
+            Hitungan anggaran dimulai dari tanggal gajian sampai gajian berikutnya. Sebelum gajian dicatat, aplikasi memakai tanggal 1 sampai akhir bulan.
           </p>
         )}
       </section>
 
-      <section aria-label="Alokasi">
-        <h2 className="section-title">Bagi ke tiap pos</h2>
+      <section aria-labelledby="bagi-h">
+        <h2 id="bagi-h" className="section-title">Bagi uang ke tiap pos</h2>
         <AllocationForm categories={categories} incomeTotal={incomeTotal} />
       </section>
 
       <section aria-label="Kelola pos" className="card flex flex-col gap-4 p-5">
         <div>
           <h2 className="text-base font-semibold tracking-tight">Kelola pos anggaran</h2>
-          <p className="text-xs text-muted">Tambah pos baru (mis. Makan). Pos yang diarsipkan hilang dari daftar, riwayatnya tetap tersimpan.</p>
+          <p className="text-sm text-muted">Pos = kelompok pengeluaran, mis. Makan atau Listrik. Pos yang dihapus hilang dari daftar, tapi catatan lamanya tetap tersimpan.</p>
         </div>
         <ul className="flex flex-col divide-y divide-border">
           {categories.map((c) => (
@@ -128,21 +137,33 @@ export default async function RencanaPage({
               <span className="pill bg-surface-2 text-muted">{c.kind === "fixed" ? "Tagihan" : c.lump_sum ? "Sekali jalan" : "Harian"}</span>
               <form action={archiveCategory}>
                 <input type="hidden" name="id" value={c.id} />
-                <SubmitButton pendingLabel="…" className="min-h-10 px-2 text-xs font-semibold text-muted hover:text-danger" aria-label={`Arsipkan ${c.name}`}>Arsipkan</SubmitButton>
+                <ConfirmButton
+                  aria-label={`Hapus pos ${c.name}`} title={`Hapus pos ${c.name}?`} confirmLabel="Ya, hapus pos"
+                  message={<>Pos {c.name} tidak muncul lagi di pilihan kategori. Catatan pengeluaran lamanya tetap tersimpan.</>}
+                  className="min-h-11 px-2 text-sm font-semibold text-danger"
+                >
+                  Hapus
+                </ConfirmButton>
               </form>
             </li>
           ))}
         </ul>
-        <form action={addCategory} className="grid grid-cols-[4rem_1fr] gap-2">
-          <input name="icon" className="input text-center text-xl" placeholder="🍽️" maxLength={4} aria-label="Emoji" />
-          <input name="name" required className="input" placeholder="Nama pos, mis. Makan" maxLength={30} aria-label="Nama pos" />
-          <select name="kind" className="input col-span-2" defaultValue="daily" aria-label="Jenis pos">
-            <option value="daily">Pengeluaran harian (ada budget & forecast)</option>
-            <option value="fixed">Tagihan tetap (lunas / belum)</option>
-          </select>
+        <form action={addCategory} className="grid grid-cols-[5rem_1fr] gap-3">
+          <Field label="Ikon">
+            <input name="icon" className="input text-center text-xl" placeholder="🍽️" maxLength={4} />
+          </Field>
+          <Field label="Nama pos">
+            <input name="name" required className="input" placeholder="mis. Makan" maxLength={30} />
+          </Field>
+          <Field label="Jenis" className="col-span-2">
+            <select name="kind" className="input" defaultValue="daily">
+              <option value="daily">Pengeluaran harian (ada sisa & perkiraan)</option>
+              <option value="fixed">Tagihan bulanan (sudah bayar / belum)</option>
+            </select>
+          </Field>
           <label className="col-span-2 flex min-h-11 items-center gap-3 text-sm">
             <input type="checkbox" name="lump_sum" className="h-5 w-5 accent-[var(--primary)]" />
-            Dibayar sekali jalan (tidak diproyeksi per hari)
+            Dibayar sekaligus sekali sebulan (mis. belanja bulanan)
           </label>
           <SubmitButton pendingLabel="Menambah…" className="btn-soft col-span-2"><Plus className="h-4 w-4" aria-hidden /> Tambah pos</SubmitButton>
         </form>

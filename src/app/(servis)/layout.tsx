@@ -10,9 +10,9 @@ export default async function ServisLayout({ children }: { children: React.React
   const { householdId } = await getCtx();
   return (
     <>
-      <div className="mx-auto w-full max-w-md px-4 pb-32 pt-[max(env(safe-area-inset-top),1.25rem)]">
+      <main className="mx-auto w-full max-w-md px-4 pb-36 pt-[max(env(safe-area-inset-top),1.25rem)]">
         <PullToRefresh>{children}</PullToRefresh>
-      </div>
+      </main>
       <ServisNav />
       <RealtimeRefresh householdId={householdId} />
     </>

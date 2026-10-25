@@ -18,9 +18,9 @@ export function DetailView({ id, o, visits, saved }: { id: string; o: VehicleOve
       <PageHeader
         title={vehicle.name} subtitle={vehicle.plate || (vehicle.kind === "car" ? "Mobil" : "Motor")} back="/servis"
         actions={
-          <Link href={`/servis/${id}/atur`} transitionTypes={["nav-forward"]} aria-label="Atur kendaraan"
-            className="flex h-10 w-10 items-center justify-center rounded-full border border-border bg-surface text-muted shadow-card">
-            <Settings2 className="h-[18px] w-[18px]" />
+          <Link href={`/servis/${id}/atur`} transitionTypes={["nav-forward"]} aria-label={`Atur ${vehicle.name}`}
+            className="flex min-h-11 items-center gap-1.5 rounded-full border border-border bg-surface px-3.5 text-sm font-semibold shadow-card">
+            <Settings2 className="h-4 w-4 text-primary" aria-hidden /> Atur
           </Link>
         }
       />
@@ -31,7 +31,7 @@ export function DetailView({ id, o, visits, saved }: { id: string; o: VehicleOve
         </p>
       )}
 
-      <section className="card flex flex-col gap-4" aria-label="Odometer">
+      <section className="card flex flex-col gap-4" aria-label="Km kendaraan">
         <div className="flex items-center gap-3">
           <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-accent-soft text-2xl" aria-hidden>{KIND_ICON[vehicle.kind]}</span>
           <div className="min-w-0 flex-1">
@@ -52,10 +52,10 @@ export function DetailView({ id, o, visits, saved }: { id: string; o: VehicleOve
         </Link>
       </section>
 
-      <section aria-label="Part">
-        <h2 className="section-title">Part & jadwal servis</h2>
+      <section aria-labelledby="jadwal-h">
+        <h2 id="jadwal-h" className="section-title">Jadwal servis tiap komponen</h2>
         {parts.length === 0 ? (
-          <p className="card text-sm text-muted">Belum ada part. Tambahkan di menu Atur.</p>
+          <p className="card text-sm text-muted">Belum ada komponen. Tambahkan lewat tombol Atur di kanan atas.</p>
         ) : (
           <ul className="card divide-y divide-border p-0">
             {parts.map((p) => {

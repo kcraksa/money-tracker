@@ -25,6 +25,8 @@ type Toast = { id?: string; state: ToastState; text: string };
 const QUEUE_KEY = "mt-queue";
 const MAX_DIGITS = 9;
 const QUICK_DEBOUNCE_MS = 700;
+// Cukup lama untuk dibaca & menekan "Batalkan"; berhenti selama disentuh/difokus (WCAG 2.2.1).
+const TOAST_MS = 10_000;
 
 function readQueue(): Pending[] {
   try { return JSON.parse(getLocal(QUEUE_KEY) || "[]"); } catch { return []; }
@@ -68,8 +70,13 @@ export function CatatForm({ categories, quicks, today, logFn = logExpense, undoF
     clearTimeout(toastTimer.current);
     toastId.current = t.id ?? null;
     setToast(t);
-    toastTimer.current = setTimeout(() => setToast(null), 6000);
+    toastTimer.current = setTimeout(() => setToast(null), TOAST_MS);
   }, []);
+  const holdToast = () => clearTimeout(toastTimer.current);
+  const releaseToast = () => {
+    clearTimeout(toastTimer.current);
+    toastTimer.current = setTimeout(() => setToast(null), TOAST_MS);
+  };
 
   // Segarkan daftar "catatan terakhir" & pills di latar belakang (tidak memblokir apa pun).
   const refresh = useCallback(() => startRefresh(() => router.refresh()), [router]);
@@ -128,8 +135,8 @@ export function CatatForm({ categories, quicks, today, logFn = logExpense, undoF
         }
         haptic("success");
         const bits = [`${summary} tersimpan`];
-        if (r.xp > 0) bits.push(`+${r.xp} XP`);
-        if (r.streak > 1) bits.push(`${r.streak} hari beruntun`);
+        if (r.xp > 0) bits.push(`+${r.xp} poin`);
+        if (r.streak > 1) bits.push(`${r.streak} hari berturut-turut`);
         if (toastId.current === p.id) show({ id: p.id, state: "saved", text: bits.join(" · ") });
         refresh();
       } catch {
@@ -181,14 +188,14 @@ export function CatatForm({ categories, quicks, today, logFn = logExpense, undoF
       writeQueue(q.filter((p) => p.id !== id));
       return;
     }
-    undoFn(id).then(refresh).catch(() => show({ state: "error", text: "Gagal mengurungkan, coba lagi." }));
+    undoFn(id).then(refresh).catch(() => show({ state: "error", text: "Gagal membatalkan, coba lagi." }));
   }
 
   return (
     <div className="flex flex-col gap-4">
       <PageHeader
         title="Catat"
-        subtitle="Nominal, pilih kategori, simpan."
+        subtitle="Ketik jumlah, pilih kategori, lalu Simpan."
         actions={
           queued > 0 ? (
             <span className="pill bg-warn-bg text-warn">
@@ -201,7 +208,7 @@ export function CatatForm({ categories, quicks, today, logFn = logExpense, undoF
       {quicks.length > 0 && (
         <section aria-label="Aksi cepat" className="flex flex-col gap-2">
           <p className="flex items-center gap-1.5 text-xs font-medium text-muted">
-            <Zap className="h-3.5 w-3.5" aria-hidden /> Sering dicatat · satu ketuk langsung tersimpan
+            <Zap className="h-3.5 w-3.5" aria-hidden /> Sering dicatat · ketuk sekali langsung tersimpan
           </p>
           <div data-no-ptr className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1" role="group" aria-label="Pengeluaran yang sering dicatat">
             {quicks.map((q) => (
@@ -233,17 +240,19 @@ export function CatatForm({ categories, quicks, today, logFn = logExpense, undoF
         </div>
         <output
           aria-live="polite"
-          className={`block py-1 text-center text-[44px] font-extrabold leading-tight tracking-tight tabular-nums ${amount ? "" : "text-muted/40"}`}
+          className={`block py-1 text-center text-[44px] font-extrabold leading-tight tracking-tight tabular-nums ${amount ? "" : "text-muted"}`}
         >
           {rupiah(amount)}
         </output>
-        <label className="relative mt-1 block">
-          <span className="sr-only">Keterangan</span>
+        <label className="mt-1 block">
+          <span className="label">Keterangan <span className="font-normal text-muted">(boleh kosong)</span></span>
+          <span className="relative block">
           <StickyNote className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" aria-hidden />
           <input
-            className="input min-h-11 pl-10" placeholder="Keterangan (opsional)" maxLength={80}
+            className="input min-h-11 pl-10" placeholder="mis. Nasi padang" maxLength={80}
             enterKeyHint="done" value={note} onChange={(e) => setNote(e.target.value)}
           />
+          </span>
         </label>
       </section>
 
@@ -279,13 +288,18 @@ export function CatatForm({ categories, quicks, today, logFn = logExpense, undoF
         ))}
       </div>
 
-      <button className="btn-primary min-h-14 text-base" onClick={submit} disabled={!amount || !categoryId}>
-        {!amount ? "Simpan" : !categoryId ? "Pilih kategori dulu" : `Simpan ${rupiah(amount)}`}
-      </button>
+      {/* Begitu siap disimpan, tombol menempel di atas navigasi bawah supaya selalu terlihat di HP berlayar
+          pendek. Sebelum itu tidak menempel, supaya tidak menutupi tombol angka. */}
+      <div className={`-mx-1 rounded-2xl p-1 ${amount && categoryId ? "sticky bottom-28 z-10 bg-bg/90 backdrop-blur" : ""}`}>
+        <button className="btn-primary min-h-14 w-full text-base disabled:opacity-100 disabled:bg-surface-2 disabled:text-muted disabled:shadow-none" onClick={submit} disabled={!amount || !categoryId}>
+          {!amount ? "Ketik jumlah dulu" : !categoryId ? "Pilih kategori dulu" : `Simpan ${rupiah(amount)}`}
+        </button>
+      </div>
 
       {toast && (
         <div
           role="status" aria-live="polite" aria-busy={toast.state === "saving"}
+          onPointerEnter={holdToast} onPointerLeave={releaseToast} onFocus={holdToast} onBlur={releaseToast}
           className={`animate-pop fixed inset-x-4 bottom-28 z-30 mx-auto flex max-w-md items-center gap-3 rounded-2xl p-3.5 shadow-float ${
             toast.state === "error" ? "bg-danger-bg text-danger"
               : toast.state === "queued" ? "bg-warn-bg text-warn"
@@ -306,8 +320,8 @@ export function CatatForm({ categories, quicks, today, logFn = logExpense, undoF
             {toast.state === "saving" ? `Menyimpan ${toast.text}…` : toast.text}
           </span>
           {toast.id && toast.state !== "error" && (
-            <button className="flex min-h-10 shrink-0 items-center gap-1 px-2 text-sm font-bold" onClick={() => undo(toast)}>
-              <Undo2 className="h-4 w-4" aria-hidden /> Urungkan
+            <button className="flex min-h-11 shrink-0 items-center gap-1 rounded-xl px-3 text-sm font-bold underline-offset-2 hover:underline" onClick={() => undo(toast)}>
+              <Undo2 className="h-4 w-4" aria-hidden /> Batalkan
             </button>
           )}
         </div>

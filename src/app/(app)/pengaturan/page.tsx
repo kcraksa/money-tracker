@@ -1,6 +1,9 @@
 import Link from "next/link";
 import { addQuick, deleteQuick, saveName, signOut } from "@/app/actions/settings";
 import { CategoryIcon } from "@/components/category-icon";
+import { ConfirmButton } from "@/components/confirm-button";
+import { Field } from "@/components/field";
+import { ThemeSetting } from "@/components/theme-toggle";
 import { Check, ChevronRight, LogOut, Plus, Trash2, Wallet } from "@/components/icons";
 import { CopyButton } from "@/components/copy-button";
 import { PageHeader } from "@/components/page-header";
@@ -66,7 +69,7 @@ export default async function PengaturanPage({
       <section className="card flex flex-col gap-4 p-5" aria-label="Tombol cepat">
         <div>
           <h2 className="text-base font-semibold tracking-tight">Tombol cepat tetap</h2>
-          <p className="text-xs text-muted">Selalu muncul di layar Catat, satu ketuk langsung tersimpan. Selain ini, pengeluaran yang sering kamu catat muncul otomatis di sana.</p>
+          <p className="text-sm text-muted">Selalu muncul di layar Catat, satu ketuk langsung tersimpan. Selain ini, pengeluaran yang sering kamu catat muncul otomatis di sana.</p>
         </div>
         {(quicks.data ?? []).length > 0 && (
           <ul className="flex flex-col divide-y divide-border">
@@ -77,23 +80,41 @@ export default async function PengaturanPage({
                 <span className="font-semibold tabular-nums">{rupiah(Number(q.amount))}</span>
                 <form action={deleteQuick}>
                   <input type="hidden" name="id" value={q.id} />
-                  <SubmitButton iconOnly aria-label={`Hapus ${q.label}`} className="flex h-10 w-10 items-center justify-center rounded-full text-muted hover:bg-surface-2">
+                  <ConfirmButton
+                    aria-label={`Hapus tombol ${q.label}`} title={`Hapus tombol ${q.label}?`}
+                    message={<>Tombol cepat {q.label} ({rupiah(Number(q.amount))}) hilang dari layar Catat. Catatan lama tidak terhapus.</>}
+                    className="flex h-11 w-11 items-center justify-center rounded-full text-muted hover:bg-surface-2"
+                  >
                     <Trash2 className="h-4 w-4" aria-hidden />
-                  </SubmitButton>
+                  </ConfirmButton>
                 </form>
               </li>
             ))}
           </ul>
         )}
-        <form action={addQuick} className="grid grid-cols-2 gap-2">
-          <input name="label" required className="input" placeholder="Nama, mis. Parkir" aria-label="Nama tombol" />
-          <input name="amount" required inputMode="numeric" className="input" placeholder="Nominal" aria-label="Nominal" />
-          <select name="category_id" required className="input col-span-2" defaultValue="" aria-label="Kategori">
-            <option value="" disabled>Pilih kategori</option>
-            {daily.map((c) => <option key={c.id} value={c.id}>{c.icon} {c.name}</option>)}
-          </select>
+        <form action={addQuick} className="grid grid-cols-2 gap-3">
+          <Field label="Nama tombol">
+            <input name="label" required className="input" placeholder="mis. Parkir" />
+          </Field>
+          <Field label="Jumlah (Rp)">
+            <input name="amount" required inputMode="numeric" className="input" placeholder="mis. 5000" />
+          </Field>
+          <Field label="Kategori" className="col-span-2">
+            <select name="category_id" required className="input" defaultValue="">
+              <option value="" disabled>Pilih kategori…</option>
+              {daily.map((c) => <option key={c.id} value={c.id}>{c.icon} {c.name}</option>)}
+            </select>
+          </Field>
           <SubmitButton pendingLabel="Menambah…" className="btn-soft col-span-2"><Plus className="h-4 w-4" aria-hidden /> Tambah tombol cepat</SubmitButton>
         </form>
+      </section>
+
+      <section className="card flex flex-col gap-3 p-5" aria-labelledby="tampilan-h">
+        <div>
+          <h2 id="tampilan-h" className="text-base font-semibold tracking-tight">Tampilan</h2>
+          <p className="text-sm text-muted">&quot;Gelap&quot; lebih nyaman di malam hari.</p>
+        </div>
+        <ThemeSetting />
       </section>
 
       <form action={saveName} className="card flex flex-col gap-3 p-5" aria-label="Nama">

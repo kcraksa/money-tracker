@@ -36,19 +36,19 @@ export function VehicleCard({ o }: { o: VehicleOverview }) {
         <div className="min-w-0 flex-1">
           <div className="text-xl font-extrabold tabular-nums leading-tight">{kmText(vehicle.odometer_km)}</div>
           <div className={`text-xs ${nudge.due ? "font-semibold text-warn" : "text-muted"}`}>
-            diperbarui {agoText(nudge.daysAgo)}{nudge.due ? " · saatnya update" : ""}
+            diisi {agoText(nudge.daysAgo)}{nudge.due ? " · saatnya isi lagi" : ""}
           </div>
         </div>
         <button
-          onClick={() => { haptic("tap"); setOpen(true); }}
-          className={`min-h-10 shrink-0 rounded-xl px-4 text-sm font-semibold transition active:scale-95 ${nudge.due ? "bg-primary text-primary-fg" : "border border-border bg-surface"}`}
+          onClick={() => { haptic("tap"); setOpen(true); }} aria-label={`Isi km ${vehicle.name}`}
+          className={`min-h-11 shrink-0 rounded-xl px-4 text-sm font-semibold transition active:scale-95 ${nudge.due ? "bg-primary text-primary-fg" : "border border-border bg-surface"}`}
         >
-          Update km
+          Isi km
         </button>
       </div>
 
       {shown.length > 0 ? (
-        <ul className="flex flex-col gap-3" aria-label="Part yang paling mendesak">
+        <ul className="flex flex-col gap-3" aria-label="Komponen yang paling mendesak">
           {shown.map((p) => {
             const ui = STATUS_UI[p.status.status];
             return (
@@ -63,7 +63,7 @@ export function VehicleCard({ o }: { o: VehicleOverview }) {
           })}
         </ul>
       ) : (
-        <p className="text-sm text-muted">Belum ada riwayat servis. Catat servis terakhir supaya pengingat bisa dihitung.</p>
+        <p className="text-sm text-muted">Belum ada riwayat servis. Catat servis terakhir supaya aplikasi bisa mengingatkan.</p>
       )}
 
       <OdometerSheet open={open} onClose={() => setOpen(false)} vehicle={{ id: vehicle.id, name: vehicle.name, km: vehicle.odometer_km }} />
