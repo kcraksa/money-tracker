@@ -8,6 +8,7 @@ import { Check, ChevronRight, LogOut, Plus, Trash2, Wallet } from "@/components/
 import { CopyButton } from "@/components/copy-button";
 import { PageHeader } from "@/components/page-header";
 import { getCtx } from "@/lib/ctx";
+import { loadQuicks } from "@/lib/server/quick";
 import { readSimpleMode } from "@/lib/server/simple-mode";
 import { rupiah } from "@/lib/format";
 import type { Category } from "@/lib/types";
@@ -25,7 +26,7 @@ export default async function PengaturanPage({
   const [hh, cats, quicks] = await Promise.all([
     supabase.from("household").select("name, invite_code").eq("id", householdId).single(),
     supabase.from("category").select("id, name, icon, kind, lump_sum, due_day, sort_order, active").order("sort_order"),
-    supabase.from("quick_expense").select("id, label, amount, category_id").order("created_at"),
+    loadQuicks(supabase),
   ]);
   const categories = (cats.data ?? []) as Category[];
   const catById = new Map(categories.map((c) => [c.id, c]));
@@ -73,18 +74,21 @@ export default async function PengaturanPage({
           <h2 className="text-base font-semibold tracking-tight">Tombol cepat tetap</h2>
           <p className="text-sm text-muted">Selalu muncul di layar Catat, satu ketuk langsung tersimpan. Selain ini, pengeluaran yang sering kamu catat muncul otomatis di sana.</p>
         </div>
-        {(quicks.data ?? []).length > 0 && (
+        {quicks.length > 0 && (
           <ul className="flex flex-col divide-y divide-border">
-            {(quicks.data ?? []).map((q) => (
+            {quicks.map((q) => (
               <li key={q.id} className="flex items-center gap-3 py-2.5">
                 <CategoryIcon icon={catById.get(q.category_id)?.icon ?? "💸"} size="sm" />
-                <span className="min-w-0 flex-1 truncate font-medium">{q.label}</span>
-                <span className="font-semibold tabular-nums">{rupiah(Number(q.amount))}</span>
+                <span className="min-w-0 flex-1">
+                  <span className="block text-base font-semibold">{q.label}</span>
+                  {q.note && <span className="block text-sm text-muted">{q.note}</span>}
+                </span>
+                <span className="font-semibold tabular-nums">{rupiah(q.amount)}</span>
                 <form action={deleteQuick}>
                   <input type="hidden" name="id" value={q.id} />
                   <ConfirmButton
                     aria-label={`Hapus tombol ${q.label}`} title={`Hapus tombol ${q.label}?`}
-                    message={<>Tombol cepat {q.label} ({rupiah(Number(q.amount))}) hilang dari layar Catat. Catatan lama tidak terhapus.</>}
+                    message={<>Tombol cepat {q.label} ({rupiah(q.amount)}) hilang dari layar Catat. Catatan lama tidak terhapus.</>}
                     className="flex h-11 w-11 items-center justify-center rounded-full text-muted hover:bg-surface-2"
                   >
                     <Trash2 className="h-4 w-4" aria-hidden />
@@ -100,6 +104,9 @@ export default async function PengaturanPage({
           </Field>
           <Field label="Jumlah (Rp)">
             <input name="amount" required inputMode="numeric" className="input" placeholder="mis. 5000" />
+          </Field>
+          <Field label="Keterangan" optional className="col-span-2">
+            <input name="note" className="input" maxLength={80} placeholder="Ikut tersimpan di catatan. Kosong = nama tombol" />
           </Field>
           <Field label="Kategori" className="col-span-2">
             <select name="category_id" required className="input" defaultValue="">

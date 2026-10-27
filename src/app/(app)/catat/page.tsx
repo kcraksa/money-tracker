@@ -1,6 +1,7 @@
 import { getCtx } from "@/lib/ctx";
 import { addDays, todayISO } from "@/lib/date";
 import { frequentExpenses } from "@/lib/frequent";
+import { loadQuicks, quickNote } from "@/lib/server/quick";
 import { readSimpleMode } from "@/lib/server/simple-mode";
 import type { Category } from "@/lib/types";
 import { CatatForm } from "./catat-form";
@@ -16,7 +17,7 @@ export default async function CatatPage() {
   const [cats, quicks, recent, history] = await Promise.all([
     supabase.from("category").select("id, name, icon, kind, lump_sum, due_day, sort_order")
       .eq("kind", "daily").eq("active", true).order("sort_order"),
-    supabase.from("quick_expense").select("id, label, amount, category_id").order("created_at"),
+    loadQuicks(supabase),
     supabase.from("expense").select("id, amount, spent_on, member_id, category_id, note")
       .order("created_at", { ascending: false }).limit(6),
     // Dasar pills "sering dicatat": pengeluaran 90 hari terakhir milik rumah tangga ini.
@@ -29,15 +30,15 @@ export default async function CatatPage() {
   const nameOf = new Map(members.map((m) => [m.id, m.display_name]));
 
   // Tombol cepat tetap (diatur di Pengaturan) lebih dulu, lalu yang otomatis dari kebiasaan.
-  const pinned = (quicks.data ?? [])
+  const pinned = quicks
     .filter((q) => catById.has(q.category_id))
     .map((q) => ({
       id: `pin:${q.id}`,
-      label: q.label as string,
-      amount: Number(q.amount),
-      categoryId: q.category_id as string,
+      label: q.label,
+      amount: q.amount,
+      categoryId: q.category_id,
       icon: catById.get(q.category_id)!.icon,
-      note: null as string | null,
+      note: quickNote(q), // ikut tersimpan di catatan: keterangan tombol, atau nama tombol bila kosong
       pinned: true,
     }));
   const auto = frequentExpenses((history.data ?? []) as { category_id: string; amount: number; note: string | null; spent_on: string }[], {
