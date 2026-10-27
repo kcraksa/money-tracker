@@ -26,7 +26,7 @@ beforeAll(async () => {
     grant usage on schema public to authenticated;
     insert into auth.users values ('${A}'), ('${B}'), ('${C}');
   `);
-  for (const f of ["0001_init.sql", "0002_period_income_store.sql", "0003_stock_check.sql", "0004_service_record.sql"]) {
+  for (const f of ["0001_init.sql", "0002_period_income_store.sql", "0003_stock_check.sql", "0004_service_record.sql", "0006_quick_note.sql"]) {
     await db.exec(readFileSync(`supabase/migrations/${f}`, "utf8"));
   }
   // 0005 dijalankan di dalam tes servis: sebelum itu, part tanpa interval ditolak.
@@ -76,6 +76,25 @@ describe("skema & RLS", () => {
     expect(cats.rows).toHaveLength(7); // hanya milik C
     const hh = await db.query("select * from household");
     expect(hh.rows).toHaveLength(1);
+  });
+
+  it("tombol cepat: keterangan opsional (maks. 80 huruf), migrasi 0006 aman diulang, terisolasi per rumah tangga", async () => {
+    await db.exec("reset role");
+    await db.exec(readFileSync("supabase/migrations/0006_quick_note.sql", "utf8"));
+    await db.exec(readFileSync("supabase/migrations/0006_quick_note.sql", "utf8"));
+    await as(A);
+    const q = (await db.query<{ id: string; household_id: string; category_id: string }>("select id, household_id, category_id from quick_expense limit 1")).rows[0];
+    expect((await db.query<{ note: string | null }>("select note from quick_expense where id = $1", [q.id])).rows[0].note).toBeNull();
+    await db.query("update quick_expense set note = 'Parkir mall' where id = $1", [q.id]);
+    await db.query(
+      "insert into quick_expense (household_id, category_id, label, amount, note) values ($1,$2,'Tol',12000,null)",
+      [q.household_id, q.category_id],
+    );
+    await expect(db.query("update quick_expense set note = $2 where id = $1", [q.id, "x".repeat(81)])).rejects.toThrow(/check/);
+    await as(C); // rumah tangga lain tidak melihat tombol cepat kita
+    expect((await db.query("select * from quick_expense where note = 'Parkir mall'")).rows).toHaveLength(0);
+    await as(A);
+    await db.query("delete from quick_expense where label = 'Tol'");
   });
 
   it("anggota hanya bisa mencatat atas namanya sendiri", async () => {

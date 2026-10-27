@@ -1,6 +1,7 @@
 import { getCtx } from "@/lib/ctx";
 import { greeting, todayISO } from "@/lib/date";
 import { levelInfo } from "@/lib/gamification";
+import { readHideBalance } from "@/lib/server/hide-balance";
 import { loadOverview } from "@/lib/server/overview";
 import { readSimpleMode } from "@/lib/server/simple-mode";
 import { HomeView } from "./home-view";
@@ -9,7 +10,7 @@ export const metadata = { title: "Beranda" };
 
 export default async function BerandaPage() {
   const { supabase, me } = await getCtx();
-  const simple = await readSimpleMode();
+  const [simple, hideBalance] = await Promise.all([readSimpleMode(), readHideBalance()]);
   const today = todayISO();
 
   // Beranda hanya ringkasan + pintasan: rincian per kategori, tagihan, dan poin ada di halamannya masing-masing.
@@ -22,6 +23,7 @@ export default async function BerandaPage() {
   return (
     <HomeView
       simple={simple}
+      hideBalance={hideBalance}
       greeting={greeting()}
       name={me.display_name}
       periodLabel={o.periodLabel}

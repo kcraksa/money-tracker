@@ -16,6 +16,8 @@ import { qty, rupiah } from "./format";
 import { MAX_BUDGET, cleanAllocation } from "./budget-input";
 import { MAX_AMOUNT, cleanAmount, cleanSpentOn } from "./expense-input";
 import { parseModule } from "./last-module";
+import { isHiddenValue, MASK } from "./hide-balance";
+import { quickNote } from "./server/quick";
 import { isSimpleValue } from "./simple-mode";
 import type { ListItem } from "./types";
 
@@ -519,5 +521,19 @@ describe("pembagian anggaran", () => {
     expect(cleanAllocation({ dueDays: { t: 31 } }, cats).dues).toEqual([{ id: "t", due: null }]);
     expect(cleanAllocation({ dueDays: { t: 0 } }, cats).dues).toEqual([{ id: "t", due: null }]);
     expect(cleanAllocation({}, cats)).toEqual({ budgets: [], dues: [] });
+  });
+});
+
+describe("tombol cepat & sembunyikan saldo", () => {
+  it("keterangan tombol: memakai keterangan sendiri, kosong -> nama tombol, dibatasi 80 huruf", () => {
+    expect(quickNote({ label: "Parkir", note: "Parkir mall" })).toBe("Parkir mall");
+    expect(quickNote({ label: "Parkir", note: null })).toBe("Parkir");
+    expect(quickNote({ label: "Parkir", note: "   " })).toBe("Parkir");
+    expect(quickNote({ label: "x", note: "y".repeat(120) })).toHaveLength(80);
+  });
+  it("sembunyikan saldo hanya menyala bila cookie persis '1'; topeng tidak membocorkan angka", () => {
+    expect(isHiddenValue("1")).toBe(true);
+    for (const v of ["0", "", "true", undefined]) expect(isHiddenValue(v)).toBe(false);
+    expect(MASK).not.toMatch(/\d/);
   });
 });

@@ -3,7 +3,7 @@ import {
   AlertTriangle, BarChart3, Check, ChevronRight, Coins, PiggyBank, Plus, Receipt, Settings, ShoppingCart, Trophy, Wrench,
 } from "@/components/icons";
 import { PageHeader } from "@/components/page-header";
-import { rupiah } from "@/lib/format";
+import { BalanceHero } from "./balance-hero";
 
 export type HomeProps = {
   /** Mode sederhana: tanpa poin dan prestasi. */
@@ -22,6 +22,8 @@ export type HomeProps = {
   alertCount: number;
   /** Tagihan bulanan yang belum lunas. */
   unpaidBills: number;
+  /** Saldo disembunyikan (cookie perangkat). */
+  hideBalance: boolean;
   /** Level keluarga untuk pintasan Prestasi; null bila mode sederhana. */
   level: number | null;
 };
@@ -32,8 +34,6 @@ type Tile = { href: string; label: string; aria?: string; Icon: React.ComponentT
  * Beranda = ringkasan + pintasan, tanpa daftar panjang. Rincian dibuka lewat tombol di bawah.
  */
 export function HomeView(p: HomeProps) {
-  const left = p.totalBudget - p.totalSpent;
-  const monthPct = p.totalBudget > 0 ? (p.totalSpent / p.totalBudget) * 100 : 0;
   // Akun yang masih kosong: tampilkan panduan mulai, bukan angka Rp 0.
   const steps = [
     { done: p.income !== null, title: "Catat gajian", hint: "Uang yang masuk bulan ini", href: "/rencana" },
@@ -62,32 +62,10 @@ export function HomeView(p: HomeProps) {
       {!setupDone && <StartCard steps={steps} />}
 
       {!fresh && (
-        <section aria-labelledby="uang-h" className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-hero-from to-hero-to p-4 text-white shadow-float">
-          <div className="pointer-events-none absolute -right-10 -top-10 h-44 w-44 rounded-full bg-white/10" aria-hidden />
-          <h2 id="uang-h" className="relative text-sm font-semibold">Pengeluaran periode ini</h2>
-          <div className="relative mt-1 text-[36px] font-extrabold leading-none tracking-tight tabular-nums">{rupiah(p.totalSpent)}</div>
-          <p className="relative mt-1.5 text-sm">{p.periodLabel} · hari ke-{p.day} dari {p.totalDays}</p>
-          {p.totalBudget > 0 && (
-            <>
-              <div
-                role="progressbar" aria-label="Anggaran terpakai" aria-valuenow={Math.round(Math.min(100, monthPct))} aria-valuemin={0} aria-valuemax={100}
-                className="relative mt-3 h-2.5 overflow-hidden rounded-full bg-white/20"
-              >
-                <div className={`h-full rounded-full ${monthPct > 100 ? "bg-red-300" : "bg-white"}`} style={{ width: `${Math.min(100, monthPct)}%` }} />
-              </div>
-              <div className="relative mt-3 grid grid-cols-2 gap-3">
-                <div>
-                  <div className="text-sm">{left >= 0 ? "Sisa anggaran" : "Lebih dari anggaran"}</div>
-                  <div className="text-lg font-bold tabular-nums">{rupiah(Math.abs(left))}</div>
-                </div>
-                <div className="text-right">
-                  <div className="text-sm">Anggaran</div>
-                  <div className="text-lg font-bold tabular-nums">{rupiah(p.totalBudget)}</div>
-                </div>
-              </div>
-            </>
-          )}
-        </section>
+        <BalanceHero
+          periodLabel={p.periodLabel} day={p.day} totalDays={p.totalDays}
+          totalSpent={p.totalSpent} totalBudget={p.totalBudget} initialHidden={p.hideBalance}
+        />
       )}
 
       {(p.overdue || (!fresh && p.alertCount > 0)) && (

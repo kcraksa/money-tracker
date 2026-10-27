@@ -13,9 +13,13 @@ export async function addQuick(form: FormData) {
   const { supabase, householdId } = await getCtx();
   const amount = num(form.get("amount"));
   const categoryId = String(form.get("category_id") ?? "");
-  const label = String(form.get("label") ?? "").trim();
+  const label = String(form.get("label") ?? "").trim().slice(0, 40);
+  const note = String(form.get("note") ?? "").trim().slice(0, 80);
   if (amount > 0 && categoryId && label) {
-    await supabase.from("quick_expense").insert({ household_id: householdId, category_id: categoryId, label, amount });
+    const row: Record<string, unknown> = { household_id: householdId, category_id: categoryId, label, amount };
+    const { error } = await supabase.from("quick_expense").insert(note ? { ...row, note } : row);
+    // 42703 = kolom note belum ada (migrasi 0006 belum dijalankan): simpan tombolnya tanpa keterangan.
+    if (error?.code === "42703" || error?.code === "PGRST204") await supabase.from("quick_expense").insert(row);
   }
   revalidatePath("/", "layout");
   redirect("/pengaturan");
